@@ -280,6 +280,10 @@ function love.keypressed(k)
         if isMenu then
             isMenu = false
         end
+        if isDialogProg and isDialog then
+            isDialogProg = false
+            dProgTime = 0
+        end
     end
 end
 
