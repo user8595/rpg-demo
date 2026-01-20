@@ -1,6 +1,6 @@
 function love.conf(t)
-    t.window.title = "test-area"
-    t.identity = "test-area"
+    t.window.title = "rpg-demo"
+    t.identity = "rpg-demo"
     t.version = "11.5"
     -- t.window.fullscreen = true
     t.window.width = 800
