@@ -1,16 +1,46 @@
 local lk, lg, lm, lw = love.keyboard, love.graphics, love.mouse, love.window
 local lt, le = love.timer, love.event
 local next = next
-local json = require("libs.json")
 local table_clear = require("table.clear")
 local wWd, wHg, gWd, gHg = lg.getWidth(), lg.getHeight(), 640, 480
 local isDebug = true
+
+local sW, sH = 2, 2
+
+-- TODO: Replace with monogram
+-- fonts
+local fonts = {
+    tooltip = lg.newFont("/assets/fonts/monogram-extended.TTF", 22),
+    dialName = lg.newFont("/assets/fonts/monogram-extended.TTF", 28),
+    ui = lg.newFont("/assets/fonts/PixeloidSans.ttf", 14),
+}
+
+fonts.ui:setLineHeight(1.2)
+
+for _, f in pairs(fonts) do
+    f:setFilter("nearest", "nearest")
+end
+
 
 if arg[2] == "debug" then
     isDebug = true
 else
     isDebug = false
 end
+
+local settings = {
+    showTooltip = true
+}
+
+local keys = {
+    up = "w",
+    down = "s",
+    left = "a",
+    right = "d",
+    menu = "j",
+    confirm = "k",
+    cancel = "l",
+}
 
 local ply = {
     x = 0,
@@ -28,8 +58,8 @@ local ply = {
 local pL, pR, pT, pB = ply.x, ply.x + ply.w, ply.y, ply.y + ply.h
 
 local plyOArea = {
-    x = ply.x - 20,
-    y = ply.y - 20,
+    x = ply.x - ply.w,
+    y = ply.y - ply.w,
     w = ply.w * 3,
     h = ply.h * 3,
 }
@@ -42,14 +72,18 @@ local plyAimgCount = 0
 -- dalogue
 local dialObj = {}
 local isDialog = false
---TODO: Add dialogue choices
 local dialPg = 1
 
 --TODO: Set to true if dialogue finishes instead of relying on a timer (typewriter effect)
 local isDialogProg = false
 local isDialogTimeout = false
+
+--TODO: Add dialogue choices
+local isDialogChoice = false
+
 local dTimeout = 0
 local dProgTime = 0
+
 -- alpha values for dialogue frame
 local dFrmAlp = 0
 local dFrmBGAlp = 0
@@ -60,6 +94,8 @@ local isMenu = false
 --TODO: Add animation to menu instead of fade in-out
 local mAlp = 0
 local mAlpOvr = 0
+
+local fieldLeft, fieldRight = -350, 5000
 
 local objNpc = {}
 -- field obj
@@ -81,7 +117,8 @@ table.insert(objNpc,
         colFill = { 0.8, 0.2, 0.5 },
         txt =
         { "This is a text. Hello world!" },
-        name = "Entity 1"
+        name = "Entity 1",
+        tAlp = 0
     })
 
 table.insert(objNpc,
@@ -93,8 +130,8 @@ table.insert(objNpc,
         colLine = { 1, 0.5, 0.7 },
         colFill = { 0.8, 0.2, 0.5 },
         txt = { "I'm a block." },
-        name =
-        "Entity 2"
+        name = "Entity 2",
+        tAlp = 0
     })
 
 table.insert(objNpc,
@@ -107,7 +144,8 @@ table.insert(objNpc,
         colFill = { 0.8, 0.2, 0.5 },
         txt =
         { "Does it feel weird that we're just in a simulation?" },
-        name = "Entity 3"
+        name = "Entity 3",
+        tAlp = 0
     })
 
 table.insert(objNpc,
@@ -120,7 +158,8 @@ table.insert(objNpc,
         colFill = { 0.8, 0.2, 0.5 },
         txt =
         { "I should probably rest now.." },
-        name = "Entity 4"
+        name = "Entity 4",
+        tAlp = 0
     })
 
 table.insert(objNpc,
@@ -133,7 +172,8 @@ table.insert(objNpc,
         colFill = { 0.8, 0.2, 0.5 },
         txt =
         { "You really went this far huh." },
-        name = "Entity 5"
+        name = "Entity 5",
+        tAlp = 0
     })
 
 table.insert(objNpc,
@@ -146,7 +186,8 @@ table.insert(objNpc,
         colFill = { 0.8, 0.2, 0.5 },
         txt =
         { "This place is huge." },
-        name = "Entity 6"
+        name = "Entity 6",
+        tAlp = 0
     })
 table.insert(objNpc,
     {
@@ -157,29 +198,59 @@ table.insert(objNpc,
         colLine = { 1, 0.5, 0.7 },
         colFill = { 0.8, 0.2, 0.5 },
         txt = { "I can talk now!", "I can even continue what i want to say!" },
-        name = "Entity 7"
+        name = "Entity 7",
+        tAlp = 0
     })
 table.insert(objNpc,
     {
-        x = 2400,
-        y = 3000,
+        x = 2000,
+        y = 2300,
         w = 20,
         h = 20,
         colLine = { 1, 0.5, 0.7 },
         colFill = { 0.8, 0.2, 0.5 },
-        txt = { "It's so empty here..", "What should we do instead of standing here?", "Only if i could ask you something.." },
-        name = "Entity 8"
+        txt = { "It's so empty here..", "What should we do instead of standing here?", { { 1, 1, 1 }, "Only if i could ", { 1, 1, 0 }, "ask", { 1, 1, 1 }, " you something.." } },
+        --[[
+        choices draft (todo): on second interaction:
+        "While you're still here, i wanna ask you something.."
+        "How do you feel being here?"
+        choices:
+        "Not that bad."
+        "I feel bored either."
+        [1]
+        "I mean, you we're with the other people you met earlier, so that makes sense, i guess."
+        "I still feel bored even after this though."
+        [2]
+        "Well, at least there's something to do in this place."
+        on third interaction:
+        "Only if there's something interesting to do here.."
+        ]]
+        name = "Entity 8",
+        tAlp = 0
+    })
+
+table.insert(objNpc,
+    {
+        x = 1600,
+        y = -60,
+        w = 20,
+        h = 20,
+        colLine = { 1, 0.5, 0.7 },
+        colFill = { 0.8, 0.2, 0.5 },
+        txt = { { { 1, 1, 1 }, "This block has no name." }, { { 1, 1, 1 }, "Or is it?" }, { { 1, 1, 1 }, "Maybe you could find it out yourself.." }, { { 1, 1, 1 }, "Oh, and also this is a ", { 1, 1, 0 }, "really", { 1, 1, 1 }, " long line of text that might probably wrap around to the next line. Or maybe not since the message is still too short to show, depending on the resolution of your screen." } },
+        name = "",
+        tAlp = 0
     })
 
 function love.load()
     lg.setDefaultFilter("nearest", "nearest")
     lm.setVisible(false)
 
-    arr = lg.newImage("/arr.png")
+    arr = lg.newImage("/assets/img/arr.png")
 end
 
 -- use on npc table loop
-function newDialog(tabDial, npcObj)
+local function newDialog(tabDial, npcObj)
     if not isDialog and not isDialogTimeout then
         if not isDialogProg then
             table.insert(tabDial, { txt = npcObj.txt, name = npcObj.name })
@@ -212,7 +283,7 @@ function love.keypressed(k)
             isDebug = false
         end
     end
-    if k == "k" then
+    if k == keys.confirm then
         if not isMenu then
             for _, npc in ipairs(objNpc) do
                 --TODO: Consider diagonals?
@@ -254,7 +325,7 @@ function love.keypressed(k)
                     dProgTime = 0
                     dArrAlp = 0
                     isDialogProg = true
-                    print("did it work?")
+                    print("next page (page: " .. dialPg .. ")")
                 else
                     isDialog = false
                     isDialogTimeout = true
@@ -265,7 +336,7 @@ function love.keypressed(k)
             end
         end
     end
-    if k == "j" then
+    if k == keys.menu then
         if not isDialog then
             if not isMenu then
                 isMenu = true
@@ -276,7 +347,7 @@ function love.keypressed(k)
             end
         end
     end
-    if k == "l" then
+    if k == keys.cancel then
         if isMenu then
             isMenu = false
         end
@@ -291,29 +362,26 @@ function love.resize(w, h)
     wWd, wHg = w, h
 end
 
-function love.update(dt)
-    pL, pR, pT, pB = ply.x, ply.x + ply.w, ply.y, ply.y + ply.h
-    plyOArea.x, plyOArea.y = ply.x - 20, ply.y - 20
-
+local function plyInput(dt)
     if not isDialog and not isMenu then
-        if lk.isDown("w") then
+        if lk.isDown(keys.up) then
             ply.y = ply.y - dt * ply.vy
             ply.face = "up"
         end
-        if lk.isDown("s") then
+        if lk.isDown(keys.down) then
             ply.y = ply.y + dt * ply.vy
             ply.face = "down"
         end
-        if lk.isDown("a") then
+        if lk.isDown(keys.left) then
             ply.x = ply.x - dt * ply.vx
             ply.face = "left"
         end
-        if lk.isDown("d") then
+        if lk.isDown(keys.right) then
             ply.x = ply.x + dt * ply.vx
             ply.face = "right"
         end
 
-        if lk.isDown("l") then
+        if lk.isDown(keys.cancel) then
             ply.vx, ply.vy = 350, 350
             ply.isAfter = true
         else
@@ -321,7 +389,7 @@ function love.update(dt)
             ply.isAfter = false
         end
 
-        if lk.isDown("w") or lk.isDown("a") or lk.isDown("s") or lk.isDown("d") then
+        if lk.isDown(keys.up) or lk.isDown(keys.left) or lk.isDown(keys.down) or lk.isDown(keys.right) then
             ply.arrTimeout = 0
         else
             if ply.arrTimeout < 3 then
@@ -344,44 +412,171 @@ function love.update(dt)
             ply.arrAlp = ply.arrAlp - dt * 7
         end
     end
+end
 
+local function gameLoop(dt)
     -- game field loop
+    if ply.isAfter then
+        table.insert(plyAImg, { x = ply.x, y = ply.y, w = ply.w, h = ply.h, a = 0.2 })
+    end
+
+    for i, pImg in ipairs(plyAImg) do
+        pImg.a = pImg.a - dt * 0.35
+        -- ply after img boundaries
+        if pImg.x < fieldLeft then
+            pImg.x = fieldLeft
+        end
+        if pImg.y < fieldLeft then
+            pImg.y = fieldLeft
+        end
+        if pImg.x > fieldRight then
+            pImg.x = fieldRight
+        end
+        if pImg.y > fieldRight then
+            pImg.y = fieldRight
+        end
+        plyAimgCount = i
+
+        if pImg.a < 0 then
+            table.remove(plyAImg, i)
+        end
+    end
+
+    if next(plyAImg) == nil then
+        plyAimgCount = 0
+    end
+    if next(objField) == nil then
+        objCount = 0
+    end
+
+    for _, obj in ipairs(objField) do
+        if plyOArea.x < obj.x + obj.w and
+            plyOArea.x + plyOArea.w > obj.x and
+            plyOArea.y + plyOArea.h > obj.y and
+            plyOArea.y < obj.y + obj.h then
+            if obj.a > 0 then
+                obj.a = obj.a - dt * 20
+            end
+        else
+            if obj.a < 1 then
+                obj.a = obj.a + dt * 2
+            end
+        end
+    end
+
+    for _, npc in ipairs(objNpc) do
+        if settings.showTooltip then
+            if ply.face == "up" then
+                if pR > npc.x - 10 and
+                    pL < npc.x + npc.w + 10 and
+                    pT < npc.y + npc.h + 10 and
+                    pB > npc.y + npc.h then
+                    if not isDialog then
+                        if npc.tAlp < 1 then
+                            npc.tAlp = npc.tAlp + dt * 8
+                        end
+                    end
+                else
+                    if npc.tAlp > 0 then
+                        npc.tAlp = npc.tAlp - dt * 5
+                    end
+                end
+            end
+            if ply.face == "down" then
+                if pR > npc.x - 10 and
+                    pL < npc.x + npc.w + 10 and
+                    pT < npc.y and
+                    pB > npc.y - 10 then
+                    if not isDialog then
+                        if npc.tAlp < 1 then
+                            npc.tAlp = npc.tAlp + dt * 8
+                        end
+                    end
+                else
+                    if npc.tAlp > 0 then
+                        npc.tAlp = npc.tAlp - dt * 5
+                    end
+                end
+            end
+            if ply.face == "left" then
+                if pR > npc.x + npc.w and
+                    pL < npc.x + npc.w + 10 and
+                    pT < npc.y + npc.h + 10 and
+                    pB > npc.y - 10 then
+                    if not isDialog then
+                        if npc.tAlp < 1 then
+                            npc.tAlp = npc.tAlp + dt * 8
+                        end
+                    end
+                else
+                    if npc.tAlp > 0 then
+                        npc.tAlp = npc.tAlp - dt * 5
+                    end
+                end
+            end
+            if ply.face == "right" then
+                if pR > npc.x - 10 and
+                    pL < npc.x and
+                    pT < npc.y + npc.h + 10 and
+                    pB > npc.y - 10 then
+                    if not isDialog then
+                        if npc.tAlp < 1 then
+                            npc.tAlp = npc.tAlp + dt * 8
+                        end
+                    end
+                else
+                    if npc.tAlp > 0 then
+                        npc.tAlp = npc.tAlp - dt * 5
+                    end
+                end
+            end
+            if isDialog then
+                if npc.tAlp > 0 then
+                    npc.tAlp = npc.tAlp - dt * 5
+                end
+            end
+        end
+    end
+end
+
+function love.update(dt)
+    pL, pR, pT, pB = ply.x, ply.x + ply.w, ply.y, ply.y + ply.h
+    plyOArea.x, plyOArea.y = ply.x - 20, ply.y - 20
+
+    plyInput(dt)
     if not isMenu then
-        if ply.isAfter then
-            table.insert(plyAImg, { x = ply.x, y = ply.y, w = ply.w, h = ply.h, a = 0.2 })
-        end
+        gameLoop(dt)
+    end
 
-        for i, pImg in ipairs(plyAImg) do
-            pImg.a = pImg.a - dt * 0.35
-
-            plyAimgCount = i
-
-            if pImg.a < 0 then
-                table.remove(plyAImg, i)
-            end
-        end
-
-        if next(plyAImg) == nil then
-            plyAimgCount = 0
-        end
-        if next(objField) == nil then
-            objCount = 0
-        end
-
-        for i, obj in ipairs(objField) do
-            if plyOArea.x < obj.x + obj.w and
-                plyOArea.x + plyOArea.w > obj.x and
-                plyOArea.y + plyOArea.h > obj.y and
-                plyOArea.y < obj.y + obj.h then
-                if obj.a > 0 then
-                    obj.a = obj.a - dt * 20
-                end
+    if not isMenu and not isDialog then
+        if lk.isDown("=") then
+            if sW < 2.5 and sH < 2.5 then
+                sW, sH = sW + dt, sH + dt
             else
-                if obj.a < 1 then
-                    obj.a = obj.a + dt * 2
-                end
+                sW, sH = 2.5, 2.5
             end
         end
+        if lk.isDown("-") then
+            if sW > 0.5 and sH > 0.5 then
+                sW, sH = sW - dt, sH - dt
+            else
+                sW, sH = 0.5, 0.5
+            end
+        end
+    end
+
+    -- ply boundaries
+    if ply.x < -350 then
+        ply.x = -350
+    end
+    if ply.y < -350 then
+        ply.y = -350
+    end
+    if ply.x + ply.w > 5000 then
+        ply.x = 5000
+    end
+    if ply.y + ply.w > 5000 then
+        ply.y = 5000
     end
 
     if isDialogProg then
@@ -404,8 +599,10 @@ function love.update(dt)
         if dFrmAlp < 1 then
             dFrmAlp = dFrmAlp + dt * 5
         end
-        if dFrmBGAlp < 0.95 then
-            dFrmBGAlp = dFrmBGAlp + dt * 4.75
+        if dFrmBGAlp < 0.93 then
+            dFrmBGAlp = dFrmBGAlp + dt * 4.65
+        else
+            dFrmBGAlp = 0.93
         end
     else
         if dFrmAlp > 0 then
@@ -446,7 +643,9 @@ end
 function love.draw()
     -- fields of hopes and dreams
     lg.push()
-    lg.translate(-ply.x + wWd / 2 - ply.w, -ply.y + wHg / 2 - ply.h)
+    lg.scale(sW, sH)
+    -- any better way though
+    lg.translate(-ply.x + (wWd / (2 * sW)) - (ply.w / 2), -ply.y + (wHg / (2 * sH)) - (ply.h / 2))
     for i, fld in ipairs(objField) do
         if i % 2 == 1 then
             lg.setColor(1, 0, 0, fld.a)
@@ -461,7 +660,7 @@ function love.draw()
         lg.rectangle("fill", npc.x, npc.y, npc.w, npc.h)
     end
     lg.setColor(1, 1, 1)
-    lg.print("it feels cold here.....", 20, 0)
+    lg.print("it feels cold here.....", fonts.ui, 20, 0)
 
     for _, pImg in ipairs(plyAImg) do
         lg.setColor(1, 0.5, 0.5, pImg.a)
@@ -506,6 +705,15 @@ function love.draw()
     lg.draw(arr, ply.x + 39, ply.y + 2, math.pi / 2, 3.5, 3.5)
     lg.draw(arr, ply.x + 1, ply.y - 19, 0, 3.5, 3.5)
 
+    for _, npc in ipairs(objNpc) do
+        lg.setColor(.4, .5, .6, npc.tAlp)
+        lg.circle("fill", npc.x + npc.w / 2, npc.y - 12, 4)
+        lg.circle("line", npc.x + npc.w / 2, npc.y - 12, 6)
+    end
+
+    lg.setColor(1, 1, 1, 0.35)
+    lg.rectangle("line", fieldLeft, fieldLeft, -fieldLeft + fieldRight, -fieldLeft + fieldRight)
+
     -- field of debug and bytes
     lg.setColor(1, 1, 1, 1)
     if isDebug then
@@ -535,13 +743,15 @@ function love.draw()
 
     -- game ui
     -- dialog
-    lg.setColor(1, 1, 1, dFrmAlp)
-    lg.rectangle("line", 20, wHg - 160, 240, 40)
-    lg.setColor(0, 0, 0, dFrmBGAlp)
-    lg.rectangle("fill", 20, wHg - 160, 240, 40)
-    lg.setColor(1, 1, 1)
-    for _, dial in ipairs(dialObj) do
-        lg.printf(dial.name, 20, wHg - 148, 240, "center")
+    for i, dial in ipairs(dialObj) do
+        if dial.name ~= "" then
+            lg.setColor(1, 1, 1, dFrmAlp)
+            lg.rectangle("line", 20 + (260 * (i - 1)), wHg - 160, 240, 40)
+            lg.setColor(0, 0, 0, dFrmBGAlp)
+            lg.rectangle("fill", 20 + (260 * (i - 1)), wHg - 160, 240, 40)
+            lg.setColor(1, 1, 1)
+            lg.printf(dial.name, fonts.dialName, 20 + (260 * (i - 1)), wHg - 153, 240, "center")
+        end
     end
 
     lg.setColor(1, 1, 1, dFrmAlp)
@@ -550,7 +760,7 @@ function love.draw()
     lg.rectangle("fill", 0, wHg - 120, wWd, 120)
     lg.setColor(1, 1, 1, 1)
     for _, dial in ipairs(dialObj) do
-        lg.print(dial.txt[dialPg], 20, wHg - 100)
+        lg.printf(dial.txt[dialPg], fonts.ui, 20, wHg - 100, wWd - 40, "left")
     end
     lg.setColor(1, 1, 1, dArrAlp)
     lg.draw(arr, wWd - 20, wHg - 15, -math.pi, 3.5, 3.5)
@@ -584,7 +794,7 @@ function love.draw()
             "\n" ..
             plyOArea.x ..
             "\n" ..
-            plyOArea.y .. "\n" .. dProgTime .. "\n" .. dTimeout .. "\n" .. dArrAlp .. "\n" .. ply.face .. "\n" .. dialPg,
+            plyOArea.y .. "\n" .. dProgTime .. "\n" .. dTimeout .. "\n" .. dArrAlp .. "\n" .. ply.face .. "\n" .. dialPg .. "\n" .. sW .. " " .. sH,
             0,
             10,
             wWd - 10, "right")
