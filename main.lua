@@ -5,7 +5,7 @@ local table_clear = require("table.clear")
 local wWd, wHg, gWd, gHg = lg.getWidth(), lg.getHeight(), 640, 480
 local isDebug = true
 
-local sW, sH = 2, 2
+local sc = 1.5
 
 -- TODO: Replace with monogram
 -- fonts
@@ -18,9 +18,8 @@ local fonts = {
 fonts.ui:setLineHeight(1.2)
 
 for _, f in pairs(fonts) do
-    f:setFilter("nearest", "nearest")
+    f:setFilter("nearest", "nearest", 4)
 end
-
 
 if arg[2] == "debug" then
     isDebug = true
@@ -53,6 +52,11 @@ local ply = {
     arrTimeout = 3,
     arrAlp = 1,
     isAfter = false,
+    dial = {
+        e_10 = false,
+        e_8_base = false,
+        e_8_b1 = false
+    }
 }
 
 local pL, pR, pT, pB = ply.x, ply.x + ply.w, ply.y, ply.y + ply.h
@@ -72,14 +76,22 @@ local plyAimgCount = 0
 -- dalogue
 local dialObj = {}
 local isDialog = false
+-- dialog page
 local dialPg = 1
 
 --TODO: Set to true if dialogue finishes instead of relying on a timer (typewriter effect)
 local isDialogProg = false
+-- delay after dialog
 local isDialogTimeout = false
 
 --TODO: Add dialogue choices
 local isDialogChoice = false
+local isDialogChSelected = false
+-- current dialog choices if available
+local dialCh = 1
+
+-- TODO: Implement multiple choices in one dialogue
+local dialChPage = 1
 
 local dTimeout = 0
 local dProgTime = 0
@@ -106,141 +118,114 @@ for y = 1, fH, 1 do
     end
 end
 
--- npcs
-table.insert(objNpc,
-    {
-        x = 0,
-        y = -60,
-        w = 20,
-        h = 20,
-        colLine = { 1, 0.5, 0.7 },
-        colFill = { 0.8, 0.2, 0.5 },
-        txt =
-        { "This is a text. Hello world!" },
-        name = "Entity 1",
-        tAlp = 0
-    })
+-- creates a new npc object (use on table)
+local function newNpc(x, y, w, h, colLine, colFill, txt, name, arg, choices)
+    table.insert(objNpc,
+        {
+            x = x,
+            y = y,
+            w = w,
+            h = h,
+            colLine = colLine,
+            colFill = colFill,
+            txt = txt,
+            -- optional
+            name = name,
+            arg = arg,
+            choices = choices,
+            tAlp = 0
+        })
+end
 
-table.insert(objNpc,
-    {
-        x = 60,
-        y = -60,
-        w = 20,
-        h = 20,
-        colLine = { 1, 0.5, 0.7 },
-        colFill = { 0.8, 0.2, 0.5 },
-        txt = { "I'm a block." },
-        name = "Entity 2",
-        tAlp = 0
-    })
+newNpc(0, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "This is a text, Hello world!" },
+    "Entity 1")
 
-table.insert(objNpc,
-    {
-        x = 120,
-        y = -60,
-        w = 20,
-        h = 20,
-        colLine = { 1, 0.5, 0.7 },
-        colFill = { 0.8, 0.2, 0.5 },
-        txt =
-        { "Does it feel weird that we're just in a simulation?" },
-        name = "Entity 3",
-        tAlp = 0
-    })
+newNpc(60, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "I'm a block." }, "Entity 2")
 
-table.insert(objNpc,
-    {
-        x = 240,
-        y = -60,
-        w = 20,
-        h = 20,
-        colLine = { 1, 0.5, 0.7 },
-        colFill = { 0.8, 0.2, 0.5 },
-        txt =
-        { "I should probably rest now.." },
-        name = "Entity 4",
-        tAlp = 0
-    })
+newNpc(120, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "Does it feel weird that we're just in a simulation?" },
+    "Entity 3")
 
-table.insert(objNpc,
-    {
-        x = 20,
-        y = 3000,
-        w = 20,
-        h = 20,
-        colLine = { 1, 0.5, 0.7 },
-        colFill = { 0.8, 0.2, 0.5 },
-        txt =
-        { "You really went this far huh." },
-        name = "Entity 5",
-        tAlp = 0
-    })
+newNpc(240, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "I should probably rest now.." },
+    "Entity 4")
 
-table.insert(objNpc,
-    {
-        x = 1760,
-        y = 1760,
-        w = 20,
-        h = 20,
-        colLine = { 1, 0.5, 0.7 },
-        colFill = { 0.8, 0.2, 0.5 },
-        txt =
-        { "This place is huge." },
-        name = "Entity 6",
-        tAlp = 0
-    })
-table.insert(objNpc,
-    {
-        x = 800,
-        y = -60,
-        w = 20,
-        h = 20,
-        colLine = { 1, 0.5, 0.7 },
-        colFill = { 0.8, 0.2, 0.5 },
-        txt = { "I can talk now!", "I can even continue what i want to say!" },
-        name = "Entity 7",
-        tAlp = 0
-    })
-table.insert(objNpc,
-    {
-        x = 2000,
-        y = 2300,
-        w = 20,
-        h = 20,
-        colLine = { 1, 0.5, 0.7 },
-        colFill = { 0.8, 0.2, 0.5 },
-        txt = { "It's so empty here..", "What should we do instead of standing here?", { { 1, 1, 1 }, "Only if i could ", { 1, 1, 0 }, "ask", { 1, 1, 1 }, " you something.." } },
-        --[[
-        choices draft (todo): on second interaction:
-        "While you're still here, i wanna ask you something.."
-        "How do you feel being here?"
-        choices:
-        "Not that bad."
-        "I feel bored either."
-        [1]
-        "I mean, you we're with the other people you met earlier, so that makes sense, i guess."
-        "I still feel bored even after this though."
-        [2]
-        "Well, at least there's something to do in this place."
-        on third interaction:
-        "Only if there's something interesting to do here.."
-        ]]
-        name = "Entity 8",
-        tAlp = 0
-    })
+newNpc(20, 3000, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "You really went this far huh." },
+    "Entity 5")
 
-table.insert(objNpc,
+newNpc(1760, 1760, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "This place is huge." },
+    "Entity 6")
+
+newNpc(800, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "I can talk now!", "I can even continue what i want to say!" },
+    "Entity 7")
+
+newNpc(2000, 2300, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
+    { "It's so empty here..", "What should we do instead of standing here?", { { 1, 1, 1 }, "Only if i could ", { 1, 1, 0 }, "ask", { 1, 1, 1 }, " you somethiing.." } },
+    "Entity 8",
+    function()
+        ply.dial.e_8_base = true
+    end
+)
+
+newNpc(1600, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
     {
-        x = 1600,
-        y = -60,
-        w = 20,
-        h = 20,
-        colLine = { 1, 0.5, 0.7 },
-        colFill = { 0.8, 0.2, 0.5 },
-        txt = { { { 1, 1, 1 }, "This block has no name." }, { { 1, 1, 1 }, "Or is it?" }, { { 1, 1, 1 }, "Maybe you could find it out yourself.." }, { { 1, 1, 1 }, "Oh, and also this is a ", { 1, 1, 0 }, "really", { 1, 1, 1 }, " long line of text that might probably wrap around to the next line. Or maybe not since the message is still too short to show, depending on the resolution of your screen." } },
-        name = "",
-        tAlp = 0
-    })
+        {
+            { 1, 1, 1 },
+            "This block has no name."
+        },
+        {
+            { 1, 1, 1 },
+            "Or is it?"
+        },
+        {
+            { 1, 1, 1 },
+            "Maybe you could find it out yourself.."
+        }
+    },
+    "", nil
+)
+
+newNpc(-100, -20, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
+    {
+        {
+            { 1, 1, 1 },
+            "I can control your game!"
+        },
+        {
+            { 1, 1, 1 },
+            "I can even open the menu!"
+        }
+    },
+    "Entity 9",
+    function()
+        isMenu = true
+    end
+)
+
+newNpc(-200, -20, 20, 20, { 1, .0, .7 }, { .8, .2, .5 },
+    {
+        {
+            { 1, 1, 1 },
+            "This place is huge."
+        }
+    }, "Entity 10",
+    function()
+        ply.dial.e_10 = true
+    end
+)
+
+newNpc(-20, -200, 20, 20, { 1, 0.5, 0.7 }, { .8, .2, .5 },
+    {
+        {
+            { 1, 1, 1 }, "This is a ",
+            { 1, 1, 0 }, "really",
+            { 1, 1, 1 },
+            " long line of text that might probably wrap around to the next line. Or maybe not since the message is still too short to show, depending on the resolution of your screen."
+        },
+        {
+            { 1, 1, 1 },
+            "Now with this information.. i can actually write an entire movie script in this box!\nOh nevermind.. it doesn't fit the whole screen."
+        }
+    },
+    "Entity 11")
 
 function love.load()
     lg.setDefaultFilter("nearest", "nearest")
@@ -253,7 +238,7 @@ end
 local function newDialog(tabDial, npcObj)
     if not isDialog and not isDialogTimeout then
         if not isDialogProg then
-            table.insert(tabDial, { txt = npcObj.txt, name = npcObj.name })
+            table.insert(tabDial, { txt = npcObj.txt, name = npcObj.name, arg = npcObj.arg, choices = npcObj.choices })
         end
         isDialog = true
         isDialogProg = true
@@ -261,9 +246,168 @@ local function newDialog(tabDial, npcObj)
     end
 end
 
+-- trigger when player is on npc dialogue hitbox (objRetElse is optional)
+local function npcHitbox(npc, objRet, objRetElse)
+    if ply.face == "up" then
+        if pR > npc.x - 10 and
+            pL < npc.x + npc.w + 10 and
+            pT < npc.y + npc.h + 10 and
+            pB > npc.y + npc.h then
+            objRet()
+        else
+            if objRetElse ~= nil then
+                objRetElse()
+            end
+        end
+    elseif ply.face == "down" then
+        if pR > npc.x - 10 and
+            pL < npc.x + npc.w + 10 and
+            pT < npc.y and
+            pB > npc.y - 10 then
+            objRet()
+        else
+            if objRetElse ~= nil then
+                objRetElse()
+            end
+        end
+    elseif ply.face == "left" then
+        if pR > npc.x + npc.w and
+            pL < npc.x + npc.w + 10 and
+            pT < npc.y + npc.h + 10 and
+            pB > npc.y - 10 then
+            objRet()
+        else
+            if objRetElse ~= nil then
+                objRetElse()
+            end
+        end
+    elseif ply.face == "right" then
+        if pR > npc.x - 10 and
+            pL < npc.x and
+            pT < npc.y + npc.h + 10 and
+            pB > npc.y - 10 then
+            objRet()
+        else
+            if objRetElse ~= nil then
+                objRetElse()
+            end
+        end
+    end
+end
+
+-- iterates table on reverse (add index (i) value as function argument in func var)
+local function reverseItr(tab, func)
+    for i = #tab, 1, -1 do
+        func(i)
+    end
+end
+
+local function dialEndFunc()
+    for _, npc in ipairs(objNpc) do
+        -- entity 10
+        if npc.name == "Entity 10" and ply.dial.e_10 then
+            reverseItr(objNpc, function(i)
+                if objNpc[i].name == "Entity 10" then
+                    table.remove(objNpc, i)
+                end
+            end)
+            newNpc(-200, -20, 20, 20, { 1, 0.5, 0.7 }, { 0.8, 0.2, 0.5 },
+                { { { 1, 1, 1 }, "This could fit a lot of people." } }, "Entity 10", nil)
+            print(npc.name .. " replaced")
+        end
+
+        -- entity 8
+        if ply.dial.e_8_base then
+            reverseItr(objNpc, function(i)
+                if objNpc[i].name == "Entity 8" then
+                    table.remove(objNpc, i)
+                end
+            end)
+            newNpc(2000, 2300, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
+                {
+                    {
+                        { 1, 1, 1 },
+                        "Now that you're still here, i'll ask you something.."
+                    },
+                    {
+                        { 1, 1, 1 },
+                        "How do you feel being here?"
+                    }
+                }, "Entity 8",
+                function()
+                    -- since this is a function, it could be programmable to work from what the player's chose
+                    ply.dial.e_8_b1 = true
+                end,
+                -- if dialPg == #dialObj.txt after dialog prog then trigger choice event
+                {
+                    txt = {
+                        -- decision pg 1 (if available)
+                        {
+                            -- decision 1
+                            -- after decision, reset dialPg value to 1 for this to work
+                            -- use on dialCh
+                            {
+                                -- use on dialPg
+                                {
+                                    { 1, 1, 1 },
+                                    "I mean, you we're talking with the other people you met earlier, so that makes sense i think."
+                                },
+                                {
+                                    { 1, 1, 1 },
+                                    "I still feel bored even after this though."
+                                },
+                                --TODO: Trigger event depending on choices
+                                arg = function()
+                                    print("[INFO] doesnt work yet.. (ch:" .. dialCh .. " pg:" .. dialChPage .. ")")
+                                end
+                            },
+                            -- decision 2
+                            -- ditto
+                            {
+                                -- ditto
+                                {
+                                    { 1, 1, 1 },
+                                    "Well, at least there's something to do in this place."
+                                },
+                                arg = function()
+                                    print("[INFO] doesnt work yet.. (ch:" .. dialCh .. " pg:" .. dialChPage .. ")")
+                                end
+                            }
+                        }
+                    },
+                    chTxt = {
+                        -- order is important in decisions
+                        "Not too bad.",
+                        "I feel tired either."
+                    }
+                    -- might improve how this feature works though, so complex
+                })
+            print(npc.name .. " replaced")
+        end
+        if npc.name == "Entity 8" and ply.dial.e_8_b1 then
+            reverseItr(objNpc, function(i)
+                if objNpc[i].name == "Entity 8" then
+                    table.remove(objNpc, i)
+                end
+            end)
+            newNpc(2000, 2300, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
+                {
+                    {
+                        { 1, 1, 1 },
+                        "Only if there's something interesting to do here.."
+                    }
+                }, "Entity 8"
+            )
+            print(npc.name .. " replaced")
+        end
+    end
+end
+
 function love.keypressed(k)
     if k == "escape" then
-        le.quit(0)
+        if not isDialog then
+            le.quit(0)
+        end
         print("exit game")
     end
     if k == "f11" then
@@ -287,37 +431,12 @@ function love.keypressed(k)
         if not isMenu then
             for _, npc in ipairs(objNpc) do
                 --TODO: Consider diagonals?
-                if ply.face == "up" then
-                    if pR > npc.x - 10 and
-                        pL < npc.x + npc.w + 10 and
-                        pT < npc.y + npc.h + 10 and
-                        pB > npc.y + npc.h then
-                        newDialog(dialObj, npc)
-                    end
-                elseif ply.face == "down" then
-                    if pR > npc.x - 10 and
-                        pL < npc.x + npc.w + 10 and
-                        pT < npc.y and
-                        pB > npc.y - 10 then
-                        newDialog(dialObj, npc)
-                    end
-                elseif ply.face == "left" then
-                    if pR > npc.x + npc.w and
-                        pL < npc.x + npc.w + 10 and
-                        pT < npc.y + npc.h + 10 and
-                        pB > npc.y - 10 then
-                        newDialog(dialObj, npc)
-                    end
-                elseif ply.face == "right" then
-                    if pR > npc.x - 10 and
-                        pL < npc.x and
-                        pT < npc.y + npc.h + 10 and
-                        pB > npc.y - 10 then
-                        newDialog(dialObj, npc)
-                    end
-                end
+                npcHitbox(npc, function()
+                    newDialog(dialObj, npc)
+                end)
             end
         end
+        -- dialog confirm & next page functionality
         if not isDialogProg and isDialog then
             for _, dial in ipairs(dialObj) do
                 if #dial.txt > dialPg then
@@ -327,11 +446,23 @@ function love.keypressed(k)
                     isDialogProg = true
                     print("next page (page: " .. dialPg .. ")")
                 else
-                    isDialog = false
-                    isDialogTimeout = true
-                    dialPg = 1
-                    table_clear(dialObj)
-                    print("end of dialogue" .. " (isDialog: " .. tostring(isDialog) .. ")")
+                    if isDialogChoice then
+                        isDialogChoice = false
+                        isDialogChSelected = false
+                        dialPg = 1
+                    else
+                        if dial.arg ~= nil then
+                            dial.arg()
+                            print("finshed dialog arg")
+                        end
+                        -- run dialogue-triggered events
+                        dialEndFunc()
+                        isDialog = false
+                        isDialogTimeout = true
+                        dialPg = 1
+                        table_clear(dialObj)
+                        print("end of dialogue" .. " (isDialog: " .. tostring(isDialog) .. ")")
+                    end
                 end
             end
         end
@@ -354,6 +485,26 @@ function love.keypressed(k)
         if isDialogProg and isDialog then
             isDialogProg = false
             dProgTime = 0
+        end
+    end
+    if k == keys.up then
+        if isDialogChoice then
+            if dialCh > 1 then
+                dialCh = dialCh - 1
+            else
+                dialCh = 1
+            end
+        end
+    end
+    if k == keys.down then
+        if isDialogChoice then
+            for _, ch in ipairs(dialObj) do
+                if dialCh < #ch.choices.txt.chTxt then
+                    dialCh = dialCh + 1
+                else
+                    dialCh = #ch.choices.txt.chTxt
+                end
+            end
         end
     end
 end
@@ -442,6 +593,7 @@ local function gameLoop(dt)
         end
     end
 
+    -- debug counters
     if next(plyAImg) == nil then
         plyAimgCount = 0
     end
@@ -466,70 +618,19 @@ local function gameLoop(dt)
 
     for _, npc in ipairs(objNpc) do
         if settings.showTooltip then
-            if ply.face == "up" then
-                if pR > npc.x - 10 and
-                    pL < npc.x + npc.w + 10 and
-                    pT < npc.y + npc.h + 10 and
-                    pB > npc.y + npc.h then
+            npcHitbox(npc,
+                function()
                     if not isDialog then
                         if npc.tAlp < 1 then
                             npc.tAlp = npc.tAlp + dt * 8
                         end
                     end
-                else
+                end,
+                function()
                     if npc.tAlp > 0 then
                         npc.tAlp = npc.tAlp - dt * 5
                     end
-                end
-            end
-            if ply.face == "down" then
-                if pR > npc.x - 10 and
-                    pL < npc.x + npc.w + 10 and
-                    pT < npc.y and
-                    pB > npc.y - 10 then
-                    if not isDialog then
-                        if npc.tAlp < 1 then
-                            npc.tAlp = npc.tAlp + dt * 8
-                        end
-                    end
-                else
-                    if npc.tAlp > 0 then
-                        npc.tAlp = npc.tAlp - dt * 5
-                    end
-                end
-            end
-            if ply.face == "left" then
-                if pR > npc.x + npc.w and
-                    pL < npc.x + npc.w + 10 and
-                    pT < npc.y + npc.h + 10 and
-                    pB > npc.y - 10 then
-                    if not isDialog then
-                        if npc.tAlp < 1 then
-                            npc.tAlp = npc.tAlp + dt * 8
-                        end
-                    end
-                else
-                    if npc.tAlp > 0 then
-                        npc.tAlp = npc.tAlp - dt * 5
-                    end
-                end
-            end
-            if ply.face == "right" then
-                if pR > npc.x - 10 and
-                    pL < npc.x and
-                    pT < npc.y + npc.h + 10 and
-                    pB > npc.y - 10 then
-                    if not isDialog then
-                        if npc.tAlp < 1 then
-                            npc.tAlp = npc.tAlp + dt * 8
-                        end
-                    end
-                else
-                    if npc.tAlp > 0 then
-                        npc.tAlp = npc.tAlp - dt * 5
-                    end
-                end
-            end
+                end)
             if isDialog then
                 if npc.tAlp > 0 then
                     npc.tAlp = npc.tAlp - dt * 5
@@ -550,17 +651,25 @@ function love.update(dt)
 
     if not isMenu and not isDialog then
         if lk.isDown("=") then
-            if sW < 2.5 and sH < 2.5 then
-                sW, sH = sW + dt, sH + dt
+            if sc < 2.5 then
+                if lk.isDown("lctrl") or lk.isDown("rctrl") then
+                    sc = sc + dt
+                else
+                    sc = sc + dt * 0.5
+                end
             else
-                sW, sH = 2.5, 2.5
+                sc = 2.5
             end
         end
         if lk.isDown("-") then
-            if sW > 0.5 and sH > 0.5 then
-                sW, sH = sW - dt, sH - dt
+            if sc > 0.85 then
+                if lk.isDown("lctrl") or lk.isDown("rctrl") then
+                    sc = sc - dt
+                else
+                    sc = sc - dt * 0.5
+                end
             else
-                sW, sH = 0.5, 0.5
+                sc = 0.85
             end
         end
     end
@@ -643,9 +752,9 @@ end
 function love.draw()
     -- fields of hopes and dreams
     lg.push()
-    lg.scale(sW, sH)
+    lg.scale(sc, sc)
     -- any better way though
-    lg.translate(-ply.x + (wWd / (2 * sW)) - (ply.w / 2), -ply.y + (wHg / (2 * sH)) - (ply.h / 2))
+    lg.translate(-ply.x + (wWd / (2 * sc)) - (ply.w / 2), -ply.y + (wHg / (2 * sc)) - (ply.h / 2))
     for i, fld in ipairs(objField) do
         if i % 2 == 1 then
             lg.setColor(1, 0, 0, fld.a)
@@ -689,16 +798,21 @@ function love.draw()
     lg.setColor(1, 1, 1, 1)
     if ply.face == "up" then
         lg.rectangle("line", ply.x, ply.y, ply.w, ply.h - 19)
+        lg.rectangle("fill", ply.x, ply.y, ply.w, ply.h - 19)
     end
     if ply.face == "down" then
         lg.rectangle("line", ply.x, ply.y + 18, ply.w, ply.h - 19)
+        lg.rectangle("fill", ply.x, ply.y + 18, ply.w, ply.h - 19)
     end
     if ply.face == "left" then
         lg.rectangle("line", ply.x, ply.y, ply.w - 19, ply.h)
+        lg.rectangle("fill", ply.x, ply.y, ply.w - 19, ply.h)
     end
     if ply.face == "right" then
         lg.rectangle("line", ply.x + 18, ply.y, ply.w - 19, ply.h)
+        lg.rectangle("fill", ply.x + 18, ply.y, ply.w - 19, ply.h)
     end
+
     lg.setColor(1, 1, 1, ply.arrAlp)
     lg.draw(arr, ply.x - 20, ply.y + 20, -math.pi / 2, 3.5, 3.5)
     lg.draw(arr, ply.x + 20, ply.y + 40, -math.pi, 3.5, 3.5)
@@ -706,7 +820,7 @@ function love.draw()
     lg.draw(arr, ply.x + 1, ply.y - 19, 0, 3.5, 3.5)
 
     for _, npc in ipairs(objNpc) do
-        lg.setColor(.4, .5, .6, npc.tAlp)
+        lg.setColor(.7, .5, .3, npc.tAlp)
         lg.circle("fill", npc.x + npc.w / 2, npc.y - 12, 4)
         lg.circle("line", npc.x + npc.w / 2, npc.y - 12, 6)
     end
@@ -760,7 +874,11 @@ function love.draw()
     lg.rectangle("fill", 0, wHg - 120, wWd, 120)
     lg.setColor(1, 1, 1, 1)
     for _, dial in ipairs(dialObj) do
-        lg.printf(dial.txt[dialPg], fonts.ui, 20, wHg - 100, wWd - 40, "left")
+        if not isDialogChSelected then
+            lg.printf(dial.txt[dialPg], fonts.ui, 20, wHg - 100, wWd - 40, "left")
+        else
+            lg.printf(dial.choices.txt[dialChPage][dialCh][dialPg], fonts.ui, 20, wHg - 100, wWd - 40, "left")
+        end
     end
     lg.setColor(1, 1, 1, dArrAlp)
     lg.draw(arr, wWd - 20, wHg - 15, -math.pi, 3.5, 3.5)
@@ -794,7 +912,12 @@ function love.draw()
             "\n" ..
             plyOArea.x ..
             "\n" ..
-            plyOArea.y .. "\n" .. dProgTime .. "\n" .. dTimeout .. "\n" .. dArrAlp .. "\n" .. ply.face .. "\n" .. dialPg .. "\n" .. sW .. " " .. sH,
+            plyOArea.y ..
+            "\n" ..
+            dProgTime ..
+            "\n" ..
+            dTimeout ..
+            "\n" .. dArrAlp .. "\n" .. ply.face .. "\n" .. dialPg .. "\n" .. dialCh .. " " .. dialChPage .. "\n" .. sc,
             0,
             10,
             wWd - 10, "right")
