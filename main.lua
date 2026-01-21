@@ -5,13 +5,13 @@ local table_clear = require("table.clear")
 local wWd, wHg, gWd, gHg = lg.getWidth(), lg.getHeight(), 640, 480
 local isDebug = true
 
-local sc = 1.5
+local sc = 1.45
 
--- TODO: Replace with monogram
 -- fonts
 local fonts = {
     tooltip = lg.newFont("/assets/fonts/monogram-extended.TTF", 22),
     dialName = lg.newFont("/assets/fonts/monogram-extended.TTF", 28),
+    dialChoice = lg.newFont("/assets/fonts/PixeloidSans.ttf", 14),
     ui = lg.newFont("/assets/fonts/PixeloidSans.ttf", 14),
 }
 
@@ -72,6 +72,7 @@ local plyAImg = {}
 local objField = {}
 local objCount = 0
 local plyAimgCount = 0
+local npcCount = 0
 
 -- dalogue
 local dialObj = {}
@@ -90,7 +91,7 @@ local isDialogChSelected = false
 -- current dialog choices if available
 local dialCh = 1
 
--- TODO: Implement multiple choices in one dialogue
+-- TODO: Implement multiple choices in one dialogue session
 local dialChPage = 1
 
 local dTimeout = 0
@@ -99,6 +100,9 @@ local dProgTime = 0
 -- alpha values for dialogue frame
 local dFrmAlp = 0
 local dFrmBGAlp = 0
+local dFrmChAlp = 0
+local dFrmBGChAlp = 0
+local dFrmChSel, dFrmChSelY = 0, lg.getHeight() - 60 - 160
 local dArrAlp = 0
 
 --TODO: Add game menu
@@ -158,7 +162,7 @@ newNpc(800, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "I can talk now!", "I 
     "Entity 7")
 
 newNpc(2000, 2300, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
-    { "It's so empty here..", "What should we do instead of standing here?", { { 1, 1, 1 }, "Only if i could ", { 1, 1, 0 }, "ask", { 1, 1, 1 }, " you somethiing.." } },
+    { "It's so empty here..", "What should we do instead of standing here?", { { 1, 1, 1 }, "Only if i could ", { 1, 1, 0 }, "ask", { 1, 1, 1 }, " you something.." } },
     "Entity 8",
     function()
         ply.dial.e_8_base = true
@@ -340,14 +344,14 @@ local function dialEndFunc()
                 end,
                 -- if dialPg == #dialObj.txt after dialog prog then trigger choice event
                 {
+                    -- decision pg 1 (if available), use on dialChPage
                     txt = {
-                        -- decision pg 1 (if available)
+                        -- decision 1
+                        -- after decision, reset dialPg value to 1 for this to work
+                        -- use on dialCh
                         {
-                            -- decision 1
-                            -- after decision, reset dialPg value to 1 for this to work
-                            -- use on dialCh
+                            -- use on dialPg
                             {
-                                -- use on dialPg
                                 {
                                     { 1, 1, 1 },
                                     "I mean, you we're talking with the other people you met earlier, so that makes sense i think."
@@ -356,10 +360,6 @@ local function dialEndFunc()
                                     { 1, 1, 1 },
                                     "I still feel bored even after this though."
                                 },
-                                --TODO: Trigger event depending on choices
-                                arg = function()
-                                    print("[INFO] doesnt work yet.. (ch:" .. dialCh .. " pg:" .. dialChPage .. ")")
-                                end
                             },
                             -- decision 2
                             -- ditto
@@ -369,16 +369,27 @@ local function dialEndFunc()
                                     { 1, 1, 1 },
                                     "Well, at least there's something to do in this place."
                                 },
-                                arg = function()
-                                    print("[INFO] doesnt work yet.. (ch:" .. dialCh .. " pg:" .. dialChPage .. ")")
-                                end
                             }
                         }
                     },
                     chTxt = {
-                        -- order is important in decisions
-                        "Not too bad.",
-                        "I feel tired either."
+                        {
+                            -- order is important in decisions
+                            "Not too bad.",
+                            "I feel tired either."
+                        }
+                    },
+                    arg = {
+                        {
+                            -- dec. 1
+                            function()
+                                ply.dial.e_8_b1 = true
+                            end,
+                            -- dec. 1
+                            function()
+                                ply.dial.e_8_b1 = true
+                            end
+                        }
                     }
                     -- might improve how this feature works though, so complex
                 })
@@ -439,29 +450,69 @@ function love.keypressed(k)
         -- dialog confirm & next page functionality
         if not isDialogProg and isDialog then
             for _, dial in ipairs(dialObj) do
-                if #dial.txt > dialPg then
-                    dialPg = dialPg + 1
-                    dProgTime = 0
-                    dArrAlp = 0
-                    isDialogProg = true
-                    print("next page (page: " .. dialPg .. ")")
-                else
-                    if isDialogChoice then
-                        isDialogChoice = false
-                        isDialogChSelected = false
-                        dialPg = 1
+                if not isDialogChoice then
+                    if #dial.txt > dialPg then
+                        dialPg = dialPg + 1
+                        dProgTime = 0
+                        dArrAlp = 0
+                        isDialogProg = true
+                        print("next page (page: " .. dialPg .. ")")
                     else
+                        -- run dialogue-triggered events
                         if dial.arg ~= nil then
                             dial.arg()
                             print("finshed dialog arg")
                         end
-                        -- run dialogue-triggered events
-                        dialEndFunc()
                         isDialog = false
                         isDialogTimeout = true
                         dialPg = 1
+                        dialEndFunc()
                         table_clear(dialObj)
                         print("end of dialogue" .. " (isDialog: " .. tostring(isDialog) .. ")")
+                    end
+                else
+                    if #dial.txt[dialPg] <= dialPg and not isDialogChSelected then
+                        isDialogChSelected = true
+                        dialPg = 1
+                        dProgTime = 0
+                        dArrAlp = 0
+                        isDialogProg = true
+                        print("choice selected (ch: " .. dialCh .. ")")
+                    else
+                        if #dial.choices.txt[dialChPage][dialCh] > dialPg and isDialogChSelected then
+                            dialPg = dialPg + 1
+                            dProgTime = 0
+                            dArrAlp = 0
+                            isDialogProg = true
+                            print("next page (page: " .. dialPg .. ", choice: " .. dialCh .. " .. )")
+                        else
+                            -- go to next choice page if any
+                            if #dial.choices.txt > 1 then
+                                isDialogChSelected = true
+                                dialPg = 1
+                                dialChPage = dialChPage + 1
+                                dProgTime = 0
+                                dArrAlp = 0
+                                isDialogProg = true
+                                print("choice selected (ch: " .. dialCh .. ")")
+                            else
+                                if dial.choices.arg ~= nil then
+                                    dial.choices.arg[dialChPage][dialCh]()
+                                    print("finshed dialog choices arg")
+                                end
+                                isDialog = false
+                                isDialogChoice = false
+                                isDialogChSelected = false
+                                isDialogTimeout = true
+                                dialPg = 1
+                                dialCh = 1
+                                dialChPage = 1
+                                dialEndFunc()
+                                table_clear(dialObj)
+                                print("end of dialogue" ..
+                                    " (isDialog: " .. tostring(isDialog) .. ", choice: " .. tostring(dialCh) .. ")")
+                            end
+                        end
                     end
                 end
             end
@@ -483,12 +534,21 @@ function love.keypressed(k)
             isMenu = false
         end
         if isDialogProg and isDialog then
+            for _, dial in ipairs(dialObj) do
+                if not isDialogChoice and dial.choices ~= nil then
+                    if dialPg >= #dial.txt then
+                        isDialogChoice = true
+                        print("triggered choices")
+                    end
+                end
+            end
             isDialogProg = false
             dProgTime = 0
         end
     end
+
     if k == keys.up then
-        if isDialogChoice then
+        if isDialogChoice and not isDialogChSelected and isDialog then
             if dialCh > 1 then
                 dialCh = dialCh - 1
             else
@@ -497,12 +557,12 @@ function love.keypressed(k)
         end
     end
     if k == keys.down then
-        if isDialogChoice then
+        if isDialogChoice and not isDialogChSelected and isDialog then
             for _, ch in ipairs(dialObj) do
-                if dialCh < #ch.choices.txt.chTxt then
+                if dialCh < #ch.choices.chTxt[dialChPage] then
                     dialCh = dialCh + 1
                 else
-                    dialCh = #ch.choices.txt.chTxt
+                    dialCh = #ch.choices.chTxt[dialChPage]
                 end
             end
         end
@@ -580,11 +640,11 @@ local function gameLoop(dt)
         if pImg.y < fieldLeft then
             pImg.y = fieldLeft
         end
-        if pImg.x > fieldRight then
-            pImg.x = fieldRight
+        if pImg.x + pImg.w > fieldRight then
+            pImg.x = fieldRight - pImg.w
         end
-        if pImg.y > fieldRight then
-            pImg.y = fieldRight
+        if pImg.y + pImg.h > fieldRight then
+            pImg.y = fieldRight - pImg.h
         end
         plyAimgCount = i
 
@@ -643,10 +703,20 @@ end
 function love.update(dt)
     pL, pR, pT, pB = ply.x, ply.x + ply.w, ply.y, ply.y + ply.h
     plyOArea.x, plyOArea.y = ply.x - 20, ply.y - 20
+    dFrmChSelY = wHg - 60 - 160
 
     plyInput(dt)
+
     if not isMenu then
         gameLoop(dt)
+    end
+
+    for i, _ in ipairs(objNpc) do
+        npcCount = i
+    end
+
+    if next(objNpc) == nil then
+        npcCount = 0
     end
 
     if not isMenu and not isDialog then
@@ -675,22 +745,30 @@ function love.update(dt)
     end
 
     -- ply boundaries
-    if ply.x < -350 then
-        ply.x = -350
+    if ply.x < fieldLeft then
+        ply.x = fieldLeft
     end
-    if ply.y < -350 then
-        ply.y = -350
+    if ply.y < fieldLeft then
+        ply.y = fieldLeft
     end
-    if ply.x + ply.w > 5000 then
-        ply.x = 5000
+    if ply.x + ply.w > fieldRight then
+        ply.x = fieldRight - ply.w
     end
-    if ply.y + ply.w > 5000 then
-        ply.y = 5000
+    if ply.y + ply.w > fieldRight then
+        ply.y = fieldRight - ply.h
     end
 
     if isDialogProg then
         dProgTime = dProgTime + dt
         if dProgTime > 0.5 then
+            for _, dial in ipairs(dialObj) do
+                if not isDialogChoice and dial.choices ~= nil then
+                    if dialPg >= #dial.txt then
+                        isDialogChoice = true
+                        print("triggered choices")
+                    end
+                end
+            end
             isDialogProg = false
             dProgTime = 0
         end
@@ -713,12 +791,42 @@ function love.update(dt)
         else
             dFrmBGAlp = 0.93
         end
+        if isDialogChoice and not isDialogChSelected then
+            if dFrmChAlp < 1 then
+                dFrmChAlp = dFrmChAlp + dt * 5
+            end
+            if dFrmBGChAlp < 0.95 then
+                dFrmBGChAlp = dFrmBGChAlp + dt * 4.75
+            end
+            if dFrmChSel < 0.15 then
+                dFrmChSel = dFrmChSel + dt * 0.75
+            end
+        else
+            if dFrmChAlp > 0 then
+                dFrmChAlp = dFrmChAlp - dt * 5
+            end
+            if dFrmBGChAlp > 0 then
+                dFrmBGChAlp = dFrmBGChAlp - dt * 4.75
+            end
+            if dFrmChSel > 0 then
+                dFrmChSel = dFrmChSel - dt * 0.75
+            end
+        end
     else
         if dFrmAlp > 0 then
             dFrmAlp = dFrmAlp - dt * 5
         end
         if dFrmBGAlp > 0 then
             dFrmBGAlp = dFrmBGAlp - dt * 4.75
+        end
+        if dFrmChAlp > 0 then
+            dFrmChAlp = dFrmChAlp - dt * 5
+        end
+        if dFrmBGChAlp > 0 then
+            dFrmBGChAlp = dFrmBGChAlp - dt * 4.75
+        end
+        if dFrmChSel > 0 then
+            dFrmChSel = dFrmChSel + dt * 1.25
         end
     end
 
@@ -753,7 +861,6 @@ function love.draw()
     -- fields of hopes and dreams
     lg.push()
     lg.scale(sc, sc)
-    -- any better way though
     lg.translate(-ply.x + (wWd / (2 * sc)) - (ply.w / 2), -ply.y + (wHg / (2 * sc)) - (ply.h / 2))
     for i, fld in ipairs(objField) do
         if i % 2 == 1 then
@@ -879,7 +986,21 @@ function love.draw()
         else
             lg.printf(dial.choices.txt[dialChPage][dialCh][dialPg], fonts.ui, 20, wHg - 100, wWd - 40, "left")
         end
+        if dial.choices ~= nil then
+            for i, _ in ipairs(dial.choices.chTxt[dialChPage]) do
+                lg.setColor(1, 1, 1, dFrmChAlp)
+                lg.rectangle("line", wWd - 20 - 240, wHg - 181 - 60 * (-i - 1) - 159, 240, 60)
+                lg.setColor(0, 0, 0, dFrmBGChAlp)
+                lg.rectangle("fill", wWd - 20 - 240, wHg - 181 - 60 * (-i - 1) - 159, 240, 60)
+                lg.setColor(1, 1, 1, dFrmChAlp)
+                lg.printf(dial.choices.chTxt[dialChPage][i], fonts.dialChoice, wWd - 20 - 240,
+                    wHg - 162 - 60 * (-i - 1) - 155, 240, "center")
+            end
+            lg.setColor(1, 1, 1, dFrmChSel)
+            lg.rectangle("fill", wWd - 20 - 240, dFrmChSelY + 60 * (dialCh - 1), 240, 60)
+        end
     end
+
     lg.setColor(1, 1, 1, dArrAlp)
     lg.draw(arr, wWd - 20, wHg - 15, -math.pi, 3.5, 3.5)
 
@@ -899,6 +1020,27 @@ function love.draw()
     lg.setColor(1, 1, 1, mAlp)
     lg.rectangle("line", wWd - 240, 40, 200, wHg - 80)
 
+    -- menu tooltips
+    if settings.showTooltip then
+        lg.setColor(.1, .1, .1, mAlp)
+        lg.rectangle("fill",
+            wWd - 52 - fonts.ui:getWidth(keys.menu:gsub("^%l", string.upper)) - 89 -
+            (fonts.ui:getWidth(keys.cancel:gsub("^%l", string.upper)) - 10), wHg - 32,
+            fonts.ui:getWidth(keys.menu:gsub("^%l", string.upper)) + 12, 20)
+        lg.setColor(1, 1, 1, mAlp)
+        lg.printf(keys.menu:gsub("^%l", string.upper), fonts.ui,
+            0 - 89 - (fonts.ui:getWidth(keys.cancel:gsub("^%l", string.upper)) - 10), wHg - 30, wWd - 40 - 5, "right")
+        lg.printf("/", fonts.ui, 0 - 70 - (fonts.ui:getWidth(keys.cancel:gsub("^%l", string.upper))) + 12, wHg - 30,
+            wWd - 40 - 5, "right")
+
+        lg.setColor(.1, .1, .1, mAlp)
+        lg.rectangle("fill", wWd - 52 - fonts.ui:getWidth(keys.cancel:gsub("^%l", string.upper)) - 49, wHg - 32,
+            fonts.ui:getWidth(keys.cancel:gsub("^%l", string.upper)) + 12, 20)
+        lg.setColor(1, 1, 1, mAlp)
+        lg.printf(keys.cancel:gsub("^%l", string.upper), fonts.ui, 0 - 49, wHg - 30, wWd - 40 - 5, "right")
+        lg.printf("Close", fonts.ui, 0, wHg - 30, wWd - 40, "right")
+    end
+
     if isDebug then
         lg.setColor(1, 1, 1, 1)
         lg.printf(
@@ -917,7 +1059,17 @@ function love.draw()
             dProgTime ..
             "\n" ..
             dTimeout ..
-            "\n" .. dArrAlp .. "\n" .. ply.face .. "\n" .. dialPg .. "\n" .. dialCh .. " " .. dialChPage .. "\n" .. sc,
+            "\n" ..
+            dArrAlp ..
+            "\n" ..
+            ply.face ..
+            "\n" ..
+            dialPg ..
+            "\n" ..
+            dialCh ..
+            " " ..
+            dialChPage ..
+            "\n choice:" .. tostring(isDialogChoice) .. " choiceSel:" .. tostring(isDialogChSelected) .. "\n" .. sc,
             0,
             10,
             wWd - 10, "right")
@@ -926,6 +1078,6 @@ function love.draw()
             " FPS\n" ..
             string.format("%.2f", lg.getStats().texturememory / 1024) ..
             " MB" .. "/" .. lg.getStats().images .. " imgs" .. "/" .. lg.getStats().drawcalls .. " drw\n" ..
-            objCount .. " objs\n" .. plyAimgCount .. " objs", 10, 10, wWd, "left")
+            objCount .. " objs\n" .. plyAimgCount .. " objs\n" .. npcCount .. " npcs", 10, 10, wWd, "left")
     end
 end
