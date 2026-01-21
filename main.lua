@@ -236,7 +236,14 @@ local function npcSetup()
         "Entity 11")
 end
 
+
 function love.load()
+    lg.clear()
+    lg.setColor(.1, .1, .1)
+    lg.rectangle("fill", 0, 0, wWd, wHg)
+    lg.setColor(1, 1, 1, 1)
+    lg.printf("Loading..", fonts.ui, 0, wHg / 2, wWd, "center")
+    love.graphics.present()
     lg.setDefaultFilter("nearest", "nearest")
     lm.setVisible(false)
     npcSetup()
@@ -435,7 +442,9 @@ function love.keypressed(k)
         end
     end
     if k == "r" then
-        ply.x, ply.y = 0, 0
+        if not isDialog and not isMenu then
+            ply.x, ply.y = 0, 0
+        end
     end
     if k == "f4" then
         if not isDebug then
@@ -500,7 +509,7 @@ function love.keypressed(k)
                                 dProgTime = 0
                                 dArrAlp = 0
                                 isDialogProg = true
-                                print("choice selected (ch: " .. dialCh .. ")")
+                                print("choice selected (ch: " .. dialCh .. ", chPage:" .. dialChPage ")")
                             else
                                 if dial.choices.arg ~= nil then
                                     dial.choices.arg[dialChPage][dialCh]()
