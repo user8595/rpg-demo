@@ -105,6 +105,8 @@ local dFrmBGChAlp = 0
 local dFrmChSel, dFrmChSelY = 0, lg.getHeight() - 60 - 160
 local dArrAlp = 0
 
+local hidArr = false
+
 --TODO: Add game menu
 local isMenu = false
 --TODO: Add animation to menu instead of fade in-out
@@ -141,99 +143,103 @@ local function newNpc(x, y, w, h, colLine, colFill, txt, name, arg, choices)
         })
 end
 
-newNpc(0, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "This is a text, Hello world!" },
-    "Entity 1")
+local function npcSetup()
+    newNpc(0, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "This is a text, Hello world!" },
+        "Entity 1")
 
-newNpc(60, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "I'm a block." }, "Entity 2")
+    newNpc(60, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "I'm a block." }, "Entity 2")
 
-newNpc(120, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "Does it feel weird that we're just in a simulation?" },
-    "Entity 3")
+    newNpc(120, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "Does it feel weird that we're just in a simulation?" },
+        "Entity 3")
 
-newNpc(240, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "I should probably rest now.." },
-    "Entity 4")
+    newNpc(240, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "I should probably rest now.." },
+        "Entity 4")
 
-newNpc(20, 3000, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "You really went this far huh." },
-    "Entity 5")
+    newNpc(20, 3000, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "You really went this far huh." },
+        "Entity 5")
 
-newNpc(1760, 1760, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "This place is huge." },
-    "Entity 6")
+    newNpc(1760, 1760, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "This place is huge." },
+        "Entity 6")
 
-newNpc(800, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 }, { "I can talk now!", "I can even continue what i want to say!" },
-    "Entity 7")
+    newNpc(800, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
+        { "I can talk now!", "I can even continue what i want to say!" },
+        "Entity 7")
 
-newNpc(2000, 2300, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
-    { "It's so empty here..", "What should we do instead of standing here?", { { 1, 1, 1 }, "Only if i could ", { 1, 1, 0 }, "ask", { 1, 1, 1 }, " you something.." } },
-    "Entity 8",
-    function()
-        ply.dial.e_8_base = true
-    end
-)
+    newNpc(2000, 2300, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
+        { "It's so empty here..", "What should we do instead of standing here?", { { 1, 1, 1 }, "Only if i could ", { 1, 1, 0 }, "ask", { 1, 1, 1 }, " you something.." } },
+        "Entity 8",
+        function()
+            ply.dial.e_8_base = true
+        end
+    )
 
-newNpc(1600, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
-    {
+    newNpc(1600, -60, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
         {
-            { 1, 1, 1 },
-            "This block has no name."
+            {
+                { 1, 1, 1 },
+                "This block has no name."
+            },
+            {
+                { 1, 1, 1 },
+                "Or is it?"
+            },
+            {
+                { 1, 1, 1 },
+                "Maybe you could find it out yourself.."
+            }
         },
-        {
-            { 1, 1, 1 },
-            "Or is it?"
-        },
-        {
-            { 1, 1, 1 },
-            "Maybe you could find it out yourself.."
-        }
-    },
-    "", nil
-)
+        "", nil
+    )
 
-newNpc(-100, -20, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
-    {
+    newNpc(-100, -20, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
         {
-            { 1, 1, 1 },
-            "I can control your game!"
+            {
+                { 1, 1, 1 },
+                "I can control your game!"
+            },
+            {
+                { 1, 1, 1 },
+                "I can even open the menu!"
+            }
         },
-        {
-            { 1, 1, 1 },
-            "I can even open the menu!"
-        }
-    },
-    "Entity 9",
-    function()
-        isMenu = true
-    end
-)
+        "Entity 9",
+        function()
+            isMenu = true
+        end
+    )
 
-newNpc(-200, -20, 20, 20, { 1, .0, .7 }, { .8, .2, .5 },
-    {
+    newNpc(-200, -20, 20, 20, { 1, .0, .7 }, { .8, .2, .5 },
         {
-            { 1, 1, 1 },
-            "This place is huge."
-        }
-    }, "Entity 10",
-    function()
-        ply.dial.e_10 = true
-    end
-)
+            {
+                { 1, 1, 1 },
+                "This place is huge."
+            }
+        }, "Entity 10",
+        function()
+            ply.dial.e_10 = true
+        end
+    )
 
-newNpc(-20, -200, 20, 20, { 1, 0.5, 0.7 }, { .8, .2, .5 },
-    {
+    newNpc(-20, -200, 20, 20, { 1, 0.5, 0.7 }, { .8, .2, .5 },
         {
-            { 1, 1, 1 }, "This is a ",
-            { 1, 1, 0 }, "really",
-            { 1, 1, 1 },
-            " long line of text that might probably wrap around to the next line. Or maybe not since the message is still too short to show, depending on the resolution of your screen."
+            {
+                { 1, 1, 1 }, "This is a ",
+                { 1, 1, 0 }, "really",
+                { 1, 1, 1 },
+                " long line of text that might probably wrap around to the next line. Or maybe not since the message is still too short to show, depending on the resolution of your screen."
+            },
+            {
+                { 1, 1, 1 },
+                "Now with this information.. i can actually write an entire movie script in this box!\nOh nevermind.. it doesn't fit the whole screen."
+            }
         },
-        {
-            { 1, 1, 1 },
-            "Now with this information.. i can actually write an entire movie script in this box!\nOh nevermind.. it doesn't fit the whole screen."
-        }
-    },
-    "Entity 11")
+        "Entity 11")
+end
 
 function love.load()
     lg.setDefaultFilter("nearest", "nearest")
     lm.setVisible(false)
+    npcSetup()
 
     arr = lg.newImage("/assets/img/arr.png")
 end
@@ -773,13 +779,20 @@ function love.update(dt)
             dProgTime = 0
         end
     else
-        if dArrAlp < 1 and isDialog then
+        if dArrAlp < 1 and isDialog and not hidArr then
             dArrAlp = dArrAlp + dt * 5
         else
             if dArrAlp > 0 then
                 dArrAlp = dArrAlp - dt * 5
             end
         end
+    end
+
+    -- hide arrow if choice popup is visible
+    if dFrmChAlp > 0 then
+        hidArr = true
+    else
+        hidArr = false
     end
 
     if isDialog then
