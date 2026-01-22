@@ -326,18 +326,19 @@ local function dialEndFunc()
             reverseItr(objNpc, function(i)
                 if objNpc[i].name == "Entity 10" then
                     table.remove(objNpc, i)
+                    print(npc.name .. " replaced")
                 end
             end)
             newNpc(-200, -20, 20, 20, { 1, 0.5, 0.7 }, { 0.8, 0.2, 0.5 },
                 { { { 1, 1, 1 }, "This could fit a lot of people." } }, "Entity 10", nil)
-            print(npc.name .. " replaced")
         end
 
         -- entity 8
-        if ply.dial.e_8_base then
+        if npc.name == "Entity 8" and ply.dial.e_8_base then
             reverseItr(objNpc, function(i)
                 if objNpc[i].name == "Entity 8" then
                     table.remove(objNpc, i)
+                    print(npc.name .. " replaced")
                 end
             end)
             newNpc(2000, 2300, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
@@ -406,12 +407,12 @@ local function dialEndFunc()
                     }
                     -- might improve how this feature works though, so complex
                 })
-            print(npc.name .. " replaced")
         end
         if npc.name == "Entity 8" and ply.dial.e_8_b1 then
             reverseItr(objNpc, function(i)
                 if objNpc[i].name == "Entity 8" then
                     table.remove(objNpc, i)
+                    print(npc.name .. " replaced")
                 end
             end)
             newNpc(2000, 2300, 20, 20, { 1, .5, .7 }, { .8, .2, .5 },
@@ -422,7 +423,6 @@ local function dialEndFunc()
                     }
                 }, "Entity 8"
             )
-            print(npc.name .. " replaced")
         end
     end
 end
@@ -499,7 +499,7 @@ function love.keypressed(k)
                             dProgTime = 0
                             dArrAlp = 0
                             isDialogProg = true
-                            print("next page (page: " .. dialPg .. ", choice: " .. dialCh .. " .. )")
+                            print("next page (page: " .. dialPg .. ", choice: " .. dialCh .. ")")
                         else
                             -- go to next choice page if any
                             if #dial.choices.txt > 1 then
@@ -813,25 +813,26 @@ function love.update(dt)
         else
             dFrmBGAlp = 0.93
         end
+        -- choices frame alpha
         if isDialogChoice and not isDialogChSelected then
             if dFrmChAlp < 1 then
-                dFrmChAlp = dFrmChAlp + dt * 5
+                dFrmChAlp = dFrmChAlp + dt * 8
             end
             if dFrmBGChAlp < 0.95 then
-                dFrmBGChAlp = dFrmBGChAlp + dt * 4.75
+                dFrmBGChAlp = dFrmBGChAlp + dt * 7.6
             end
             if dFrmChSel < 0.15 then
-                dFrmChSel = dFrmChSel + dt * 0.75
+                dFrmChSel = dFrmChSel + dt * 1.2
             end
         else
             if dFrmChAlp > 0 then
-                dFrmChAlp = dFrmChAlp - dt * 5
+                dFrmChAlp = dFrmChAlp - dt * 8
             end
             if dFrmBGChAlp > 0 then
-                dFrmBGChAlp = dFrmBGChAlp - dt * 4.75
+                dFrmBGChAlp = dFrmBGChAlp - dt * 7.6
             end
             if dFrmChSel > 0 then
-                dFrmChSel = dFrmChSel - dt * 0.75
+                dFrmChSel = dFrmChSel - dt * 1.2
             end
         end
     else
@@ -841,14 +842,15 @@ function love.update(dt)
         if dFrmBGAlp > 0 then
             dFrmBGAlp = dFrmBGAlp - dt * 4.75
         end
+        
         if dFrmChAlp > 0 then
-            dFrmChAlp = dFrmChAlp - dt * 5
+            dFrmChAlp = dFrmChAlp - dt * 8
         end
         if dFrmBGChAlp > 0 then
-            dFrmBGChAlp = dFrmBGChAlp - dt * 4.75
+            dFrmBGChAlp = dFrmBGChAlp - dt * 7.6
         end
         if dFrmChSel > 0 then
-            dFrmChSel = dFrmChSel + dt * 1.25
+            dFrmChSel = dFrmChSel + dt * 1.2
         end
     end
 
@@ -900,6 +902,7 @@ function love.draw()
     lg.setColor(1, 1, 1)
     lg.print("it feels cold here.....", fonts.ui, 20, 0)
 
+    -- after img
     for _, pImg in ipairs(plyAImg) do
         lg.setColor(1, 0.5, 0.5, pImg.a)
         lg.rectangle("fill", pImg.x, pImg.y, pImg.w, pImg.h)
@@ -920,6 +923,7 @@ function love.draw()
         end
     end
 
+    -- player obj
     lg.setColor(1, 0.5, 0.5)
     lg.rectangle("fill", ply.x, ply.y, ply.w, ply.h)
     lg.setColor(1, 0.75, 0.7)
@@ -942,6 +946,7 @@ function love.draw()
         lg.rectangle("fill", ply.x + 18, ply.y, ply.w - 19, ply.h)
     end
 
+    -- ply arrow obj
     lg.setColor(1, 1, 1, ply.arrAlp)
     lg.draw(arr, ply.x - 20, ply.y + 20, -math.pi / 2, 3.5, 3.5)
     lg.draw(arr, ply.x + 20, ply.y + 40, -math.pi, 3.5, 3.5)
@@ -998,7 +1003,7 @@ function love.draw()
     end
 
     lg.setColor(1, 1, 1, dFrmAlp)
-    lg.rectangle("line", 0, wHg - 120, wWd, 120)
+    lg.line(0, wHg - 120, wWd,wHg  - 120)
     lg.setColor(0, 0, 0, dFrmBGAlp)
     lg.rectangle("fill", 0, wHg - 120, wWd, 120)
     lg.setColor(1, 1, 1, 1)
@@ -1020,6 +1025,10 @@ function love.draw()
             end
             lg.setColor(1, 1, 1, dFrmChSel)
             lg.rectangle("fill", wWd - 20 - 240, dFrmChSelY + 60 * (dialCh - 1), 240, 60)
+            lg.setColor(1, 1, 1, dFrmChAlp)
+            if not isDialogChSelected then
+                lg.draw(arr, wWd - 20 - 240 - 15, dFrmChSelY + 60 * (dialCh - 1) + 23, math.pi / 2, 3.5, 3.5)
+            end
         end
     end
 
