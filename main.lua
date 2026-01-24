@@ -1023,6 +1023,8 @@ function love.update(dt)
                         end
                     end
                 end
+            else
+                dTxtOffX = 0
             end
 
             -- dial choices y offset
