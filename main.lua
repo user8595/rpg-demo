@@ -272,7 +272,7 @@ local function npcSetup()
             },
             {
                 { 1, 1, 1 },
-                "Though im the only one with a portrait though..",
+                "Though i'm the only one with a portrait though..",
                 npcFoc = 1,
                 npcExp = 2
             },
@@ -301,7 +301,7 @@ local function npcSetup()
                 npcExp = 2
             },
         },
-        { "Entity 12", "Cat" }, nil, nil, nil,
+        { "Entity 12", "Cat" }, nil, nil, lg.newImage("/assets/img/e_normal.png"),
         -- use on npcFoc
         {
             -- use on npcExp (this returns a table)
@@ -812,6 +812,10 @@ local function plyInput(dt)
             if ply.arrAlp < 1 then
                 ply.arrAlp = ply.arrAlp + dt * 3
             end
+        else
+            if ply.arrAlp > 0 then
+                ply.arrAlp = ply.arrAlp - dt * 7
+            end
         end
     else
         ply.arrTimeout = 0
@@ -959,7 +963,7 @@ function love.update(dt)
         for _, dial in ipairs(dialObj) do
             if dial.choices ~= nil then
                 if dialPg == #dial.txt[dialChPage] and not isDialogChSelected or
-                dialPg == #dial.choices.txt[dialChPage][dialCh].str and not isDialogChSelected then
+                    dialPg == #dial.choices.txt[dialChPage][dialCh].str and not isDialogChSelected then
                     hidArr = true
                 else
                     hidArr = false
@@ -1009,6 +1013,7 @@ function love.update(dt)
                         npcPImg = lg.newImage(dial.portr[dial.txt[dialPg].npcFoc][dial.txt[dialPg].npcExp])
                         -- dial txt x offset
                         dTxtOffX = 100
+                        print("rendered portrait dialogue (FPS: " .. lt.getFPS() .. ")")
                     else
                         dTxtOffX = 0
                         print("rendered portrait-less dialogue")
@@ -1109,10 +1114,11 @@ function love.update(dt)
 end
 
 function love.draw()
-    -- fields of hopes and dreams
     lg.push()
     lg.scale(sc, sc)
     lg.translate(-ply.x + (wWd / (2 * sc)) - (ply.w / 2), -ply.y + (wHg / (2 * sc)) - (ply.h / 2))
+
+    -- fields of hopes and dreams
     for i, fld in ipairs(objField) do
         if i % 2 == 1 then
             lg.setColor(1, 0, 0, fld.a)
@@ -1122,14 +1128,27 @@ function love.draw()
         lg.rectangle("fill", fld.x, fld.y, fld.w, fld.h)
         objCount = i
     end
-    for _, npc in ipairs(objNpc) do
-        lg.setColor(npc.colFill)
-        lg.rectangle("fill", npc.x, npc.y, npc.w, npc.h)
-    end
+
     lg.setColor(1, 1, 1)
     lg.print("it feels cold here.....", fonts.ui, 20, 0)
 
-    -- after img
+    -- npc character
+    for _, npc in ipairs(objNpc) do
+        if npc.objImg ~= nil then
+            if type(npc.objImg) == "table" then
+                --TODO: Implement switching npc sprite in dialogue/cutscenes (?)
+            else
+                --TODO: Change npc facing direction depending on player position
+                lg.setColor(1, 1, 1)
+                lg.draw(npc.objImg, npc.x, npc.y, 0, npc.w / npc.objImg:getWidth(), npc.h / npc.objImg:getHeight())
+            end
+        else
+            lg.setColor(npc.colFill)
+            lg.rectangle("fill", npc.x, npc.y, npc.w, npc.h)
+        end
+    end
+
+    -- ply after img
     for _, pImg in ipairs(plyAImg) do
         lg.setColor(1, 0.5, 0.5, pImg.a)
         lg.rectangle("fill", pImg.x, pImg.y, pImg.w, pImg.h)
@@ -1180,12 +1199,14 @@ function love.draw()
     lg.draw(arr, ply.x + 39, ply.y + 2, math.pi / 2, 3.5, 3.5)
     lg.draw(arr, ply.x + 1, ply.y - 19, 0, 3.5, 3.5)
 
+    -- tooltip obj
     for _, npc in ipairs(objNpc) do
         lg.setColor(.7, .5, .3, npc.tAlp)
         lg.circle("fill", npc.x + npc.w / 2, npc.y - 12, 4)
         lg.circle("line", npc.x + npc.w / 2, npc.y - 12, 6)
     end
 
+    -- game border
     lg.setColor(1, 1, 1, 0.35)
     lg.rectangle("line", fieldLeft, fieldLeft, -fieldLeft + fieldRight, -fieldLeft + fieldRight)
 
@@ -1240,10 +1261,9 @@ function love.draw()
     lg.setColor(1, 1, 1, 1)
     for _, dial in ipairs(dialObj) do
         if dial.portr ~= nil then
-            --TODO: Implement downscaling/shrinking if image > 8px
             if not isDialogChSelected then
                 if dial.portr[dial.txt[dialPg].npcFoc] ~= nil then
-                    lg.draw(npcPImg, 20, wHg - 100, 0, 10, 10)
+                    lg.draw(npcPImg, 20, wHg - 100, 0, 80 / npcPImg:getWidth(), 80 / npcPImg:getHeight())
                 end
             else
                 if dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc] ~= nil then
