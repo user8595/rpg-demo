@@ -956,6 +956,16 @@ function love.update(dt)
 
     if isDialogProg then
         dProgTime = dProgTime + dt
+        for _, dial in ipairs(dialObj) do
+            if dial.choices ~= nil then
+                if dialPg == #dial.txt[dialChPage] and not isDialogChSelected or
+                dialPg == #dial.choices.txt[dialChPage][dialCh].str and not isDialogChSelected then
+                    hidArr = true
+                else
+                    hidArr = false
+                end
+            end
+        end
         if dProgTime >= 0.5 then
             for _, dial in ipairs(dialObj) do
                 if not isDialogChoice and dial.choices ~= nil then
@@ -975,13 +985,6 @@ function love.update(dt)
             dArrAlp = 0
             dProgTime = 0
         end
-    end
-
-    -- hide arrow if choice popup is visible
-    if dFrmChAlp > 0 then
-        hidArr = true
-    else
-        hidArr = false
     end
 
     -- dialogue events
