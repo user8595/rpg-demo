@@ -1,10 +1,10 @@
 ## rpg-demo
 
-RPG game demo made with LÖVE.
+![preview](/preview.png)
+
+RPG game demo made with [LÖVE](https://love2d.org).
 
 Started as a collision test, ended up with something quite worth to release.
-
-![preview](/preview.png)
 
 ## controls
 
