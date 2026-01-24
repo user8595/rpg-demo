@@ -105,13 +105,16 @@ local dFrmBGAlp = 0
 local dFrmChAlp = 0
 local dFrmBGChAlp = 0
 
+-- used to offset dialog text if portrait img is present
+local dTxtOffX = 0
+
 local dFrmOff = 0
 local dFrmChSel, dFrmChSelY = 0, lg.getHeight() - 60 - 160
 local dArrAlp = 0
 
 -- dialogue npc focus (which npc to show in dial.)
 -- might be useful for cutscenes
-local npcFocus = 1
+local npcNameFocus = 1
 
 local hidArr = false
 
@@ -124,6 +127,15 @@ local mAlpOvr = 0
 local fieldLeft, fieldRight = -350, 5000
 
 local objNpc = {}
+
+-- entity portraits
+local npcPortr = {
+    ent = {
+        "/assets/img/e_normal.png",
+        "/assets/img/e_tired.png"
+    }
+}
+
 -- field obj
 local fW, fH, oW, oH = 100, 100, 20, 20
 for y = 1, fH, 1 do
@@ -133,9 +145,6 @@ for y = 1, fH, 1 do
 end
 
 -- objimg > colFine & colFill
---TODO: Add square portraits & textures in dialogue
---TODO: Add dialogue portraits switching on a single session
--- if type of name == table of names & txt table includes index number for img on name table (npcFocus for var), change current npc on dialogue name & portrait depending on npcFocus value (replace)
 
 -- creates a new npc object (use on table)
 local function newNpc(x, y, w, h, colLine, colFill, txt, name, arg, choicesAnsw, objImg, portr)
@@ -255,12 +264,43 @@ local function npcSetup()
             {
                 { 1, 1, 1 },
                 "This looks fancy.",
-                focus = 1
+                -- curent npc portrait from portrait table
+                npcFoc = 1,
+                -- expression
+                npcExp = 1
+            },
+            {
+                { 1, 1, 1 },
+                "Though im the only one with a portrait though..",
+                npcFoc = 1,
+                npcExp = 2
+            },
+            {
+                { 1, 1, 1 },
+                "Maybe that's fine i think.",
+                npcFoc = 1,
+                npcExp = 1
+            },
+            {
+                { 1, 1, 1 },
+                "Oh, and also we have a special guest from my cat(tm)!\nWhat would you like to say?",
+                npcFoc = 1,
+                npcExp = 1
+            },
+            {
+                { 1, 1, 1 },
+                "54444trrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr                            dfcccccccdcfcfcfcfcfdssssscdfcdfcdfcdfcdfcdfcdfcdfcdfcdfcdfcdf",
+                npcFoc = 2,
+                npcExp = 1
             },
         },
-        "Entity 12", nil, nil, nil, "/assets/img/e_12.png")
+        { "Entity 12", "Cat" }, nil, nil, nil,
+        -- use on npcFoc
+        {
+            -- use on npcExp (this returns a table)
+            npcPortr.ent,
+        })
 end
-
 
 function love.load()
     lg.clear()
@@ -271,16 +311,22 @@ function love.load()
     love.graphics.present()
     lg.setDefaultFilter("nearest", "nearest")
     lm.setVisible(false)
+
+    -- npc objects
     npcSetup()
 
     arr = lg.newImage("/assets/img/arr.png")
+
+    -- placeholder for portrait
+    npcPImg = lg.newImage("assets/img/no_tex.png")
 end
 
 -- use on npc table loop
 local function newDialog(tabDial, npcObj)
     if not isDialog and not isDialogTimeout then
         if not isDialogProg then
-            table.insert(tabDial, { txt = npcObj.txt, name = npcObj.name, arg = npcObj.arg, choices = npcObj.choices })
+            table.insert(tabDial,
+                { txt = npcObj.txt, name = npcObj.name, arg = npcObj.arg, choices = npcObj.choices, portr = npcObj.portr })
         end
         isDialog = true
         isDialogProg = true
@@ -380,6 +426,7 @@ local function dialEndFunc()
                             "How do you feel being here?"
                         },
                     },
+                    -- if dialObj.choices.txt[dialChPage][dialCh].str ~= nil then isDialogChSelected = false, (skip rendering dialgue answers). possibly
                     {
                         {
                             { 1, 1, 1 },
@@ -558,6 +605,7 @@ function love.keypressed(k)
     if k == "r" then
         if not isDialog and not isMenu then
             ply.x, ply.y = 0, 0
+            sc = 1.45
         end
     end
     if k == "f4" then
@@ -913,12 +961,12 @@ function love.update(dt)
             isDialogProg = false
         end
     else
+        -- dialog confirm tex alpha
         if dArrAlp < 1 and isDialog and not hidArr then
             dArrAlp = dArrAlp + dt * 5
-        else
-            if dArrAlp > 0 then
-                dArrAlp = dArrAlp - dt * 5
-            end
+        elseif not isDialog then
+            dArrAlp = 0
+            dProgTime = 0
         end
     end
 
@@ -929,6 +977,7 @@ function love.update(dt)
         hidArr = false
     end
 
+    -- dialogue events
     if isDialog then
         -- dialogue frame alpha
         if dFrmAlp < 1 then
@@ -940,12 +989,40 @@ function love.update(dt)
             dFrmBGAlp = 0.93
         end
 
-        -- choices frame alpha
         for _, dial in ipairs(dialObj) do
+            -- update dialogue img
+            if dial.portr ~= nil then
+                npcPImg:release()
+                if not isDialogChSelected then
+                    npcNameFocus = dial.txt[dialPg].npcFoc
+                    if dial.portr[dial.txt[dialPg].npcFoc] ~= nil then
+                        npcPImg = lg.newImage(dial.portr[dial.txt[dialPg].npcFoc][dial.txt[dialPg].npcExp])
+                        -- dial txt x offset
+                        dTxtOffX = 100
+                    else
+                        dTxtOffX = 0
+                        print("rendered portrait-less dialogue")
+                    end
+                else
+                    npcNameFocus = dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc
+                    if dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc] ~= nil then
+                        if dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc] ~= nil then
+                            npcPImg = lg.newImage(dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc]
+                                [dial.choices.txt[dialChPage][dialCh].str[dialPg].npcExp])
+                            dTxtOffX = 100
+                        else
+                            dTxtOffX = 0
+                            print("rendered portrait-less dialogue in choices")
+                        end
+                    end
+                end
+            end
+
             -- dial choices y offset
             if dial.choices ~= nil then
                 dFrmOff = - #dial.choices.chTxt[dialChPage] + 2
 
+                -- choices frame alpha
                 if not isDialogChSelected then
                     if dProgTime >= 0.5 and dialPg == #dial.choices.txt[dialChPage][dialCh].str or dProgTime >= 0.5 and dialPg == #dial.txt[dialChPage] then
                         if dFrmChAlp < 1 then
@@ -1136,7 +1213,11 @@ function love.draw()
             lg.setColor(0, 0, 0, dFrmBGAlp)
             lg.rectangle("fill", 20 + (260 * (i - 1)), wHg - 160, 240, 40)
             lg.setColor(1, 1, 1)
-            lg.printf(dial.name, fonts.dialName, 20 + (260 * (i - 1)), wHg - 153, 240, "center")
+            if type(dial.name) ~= "table" then
+                lg.printf(dial.name, fonts.dialName, 20 + (260 * (i - 1)), wHg - 153, 240, "center")
+            else
+                lg.printf(dial.name[npcNameFocus], fonts.dialName, 20 + (260 * (i - 1)), wHg - 153, 240, "center")
+            end
         end
     end
 
@@ -1146,11 +1227,23 @@ function love.draw()
     lg.rectangle("fill", 0, wHg - 120, wWd, 120)
     lg.setColor(1, 1, 1, 1)
     for _, dial in ipairs(dialObj) do
+        if dial.portr ~= nil then
+            --TODO: Implement downscaling/shrinking if image > 8px
+            if not isDialogChSelected then
+                if dial.portr[dial.txt[dialPg].npcFoc] ~= nil then
+                    lg.draw(npcPImg, 20, wHg - 100, 0, 10, 10)
+                end
+            else
+                if dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc] ~= nil then
+                    lg.draw(npcPImg, 20, wHg - 100, 0, 10, 10)
+                end
+            end
+        end
         if not isDialogChSelected then
             if dial.choices ~= nil then
-                lg.printf(dial.txt[dialChPage][dialPg], fonts.ui, 20, wHg - 100, wWd - 40, "left")
+                lg.printf(dial.txt[dialChPage][dialPg], fonts.ui, 20 + dTxtOffX, wHg - 100, wWd - 40 - dTxtOffX, "left")
             else
-                lg.printf(dial.txt[dialPg], fonts.ui, 20, wHg - 100, wWd - 40, "left")
+                lg.printf(dial.txt[dialPg], fonts.ui, 20 + dTxtOffX, wHg - 100, wWd - 40 - dTxtOffX, "left")
             end
         else
             -- dialog choices answers
