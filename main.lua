@@ -28,7 +28,8 @@ else
 end
 
 local settings = {
-    showTooltip = true
+    showTooltip = true,
+    hideNames = false
 }
 
 local keys = {
@@ -292,6 +293,12 @@ local function npcSetup()
                 "54444trrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr                            dfcccccccdcfcfcfcfcfdssssscdfcdfcdfcdfcdfcdfcdfcdfcdfcdfcdfcdf",
                 npcFoc = 2,
                 npcExp = 1
+            },
+            {
+                { 1, 1, 1 },
+                "Well.. at least he as a point though.",
+                npcFoc = 1,
+                npcExp = 2
             },
         },
         { "Entity 12", "Cat" }, nil, nil, nil,
@@ -1207,7 +1214,7 @@ function love.draw()
     -- game ui
     -- dialog
     for i, dial in ipairs(dialObj) do
-        if dial.name ~= "" then
+        if dial.name ~= "" and not settings.hideNames then
             lg.setColor(1, 1, 1, dFrmAlp)
             lg.rectangle("line", 20 + (260 * (i - 1)), wHg - 160, 240, 40)
             lg.setColor(0, 0, 0, dFrmBGAlp)
