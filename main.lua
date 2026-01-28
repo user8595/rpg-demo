@@ -44,8 +44,8 @@ local keys = {
 }
 
 local ply = {
-    x = 2000,
-    y = 2280,
+    x = 0,
+    y = 0,
     w = 20,
     h = 20,
     vx = 200,
