@@ -13,6 +13,7 @@ local fonts = {
     dialName = lg.newFont("/assets/fonts/monogram-extended.TTF", 28),
     dialChoice = lg.newFont("/assets/fonts/PixeloidSans.ttf", 14),
     ui = lg.newFont("/assets/fonts/PixeloidSans.ttf", 14),
+    othr = lg.newFont("assets/fonts/Picopixel.ttf", 14)
 }
 
 fonts.ui:setLineHeight(1.2)
@@ -43,8 +44,8 @@ local keys = {
 }
 
 local ply = {
-    x = 0,
-    y = 0,
+    x = 2000,
+    y = 2280,
     w = 20,
     h = 20,
     vx = 200,
@@ -296,6 +297,18 @@ local function npcSetup()
             },
             {
                 { 1, 1, 1 },
+                '67yTT%^"98888888888888888888888888888888888888888888888888yhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh09',
+                npcFoc = 2,
+                npcExp = 1
+            },
+            {
+                { 1, 1, 1 },
+                'errrrrrrrrrrrrrrrvvvvvvvvvvvvgb',
+                npcFoc = 2,
+                npcExp = 1,
+            },
+            {
+                { 1, 1, 1 },
                 "Well.. at least he as a point though.",
                 npcFoc = 1,
                 npcExp = 2
@@ -306,6 +319,51 @@ local function npcSetup()
         {
             -- use on npcExp (this returns a table)
             npcPortr.ent,
+        })
+
+    newNpc(-20, -120, 20, 20, nil, nil,
+        {
+            {
+                "Do you want to close the game?",
+                npcFoc = 1,
+                npcExp = 1,
+            }
+        }, "Entity 13", nil,
+        {
+            txt = {
+                {
+                    nil,
+                    {
+                        str = {
+                            {
+                                "Thought you would like to..",
+                                npcFoc = 1,
+                                npcExp = 2,
+                            }
+                        },
+                        isAdvance = true
+                    }
+                }
+            },
+            chTxt = {
+                {
+                    "Yes..",
+                    "No No No NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO"
+                }
+            },
+            arg = {
+                {
+                    function()
+                        print("Entity 13: You asked for it!")
+                        le.quit(0)
+                    end,
+                    nil
+                }
+            }
+        },
+        lg.newImage("/assets/img/e_normal.png"),
+        {
+            npcPortr.ent
         })
 end
 
@@ -655,58 +713,79 @@ function love.keypressed(k)
                         print("end of dialogue" .. " (isDialog: " .. tostring(isDialog) .. ")")
                     end
                 else
+                    local function dialChEnd()
+                        if dial.choices.arg[dialChPage][dialCh] ~= nil then
+                            dial.choices.arg[dialChPage][dialCh]()
+                        else
+                            if dial.choices.arg[dialChPage] ~= nil and type(dial.choices.arg[dialChPage]) ~= "table" then
+                                dial.choices.arg[dialChPage]()
+                            end
+                        end
+                        print("finshed dialog choices arg")
+                        isDialog = false
+                        isDialogChoice = false
+                        isDialogChSelected = false
+                        isDialogTimeout = true
+                        dialPg = 1
+                        dialCh = 1
+                        dialChVis = 1
+                        dialChPage = 1
+                        dialEndFunc()
+                        table_clear(dialObj)
+                        print("end of dialogue" ..
+                            " (isDialog: " ..
+                            tostring(isDialog) ..
+                            ", choice: " ..
+                            tostring(dialCh) .. ", choicePg: " .. tostring(dialChPage) .. ")")
+                    end
+
+                    -- ###--- function starts here ---###
                     if #dial.txt <= dialPg and not isDialogChSelected then
                         --TODO: ..Selected should be ..State instead
                         isDialogChSelected = true
                         dialCh = dialChVis
-                        dialChVis = 1
-                        dialPg = 1
-                        dProgTime = 0
-                        dArrAlp = 0
-                        isDialogProg = true
-                        print("choice selected (ch: " .. dialCh .. ")")
-                    else
-                        if #dial.choices.txt[dialChPage][dialCh].str > dialPg then
-                            dialPg = dialPg + 1
+                        if dial.choices.txt[dialChPage][dialCh] == nil then
+                            dialChEnd()
+                        else
+                            dialPg = 1
                             dProgTime = 0
                             dArrAlp = 0
                             isDialogProg = true
-                            print("next page (page: " .. dialPg .. ", choice: " .. dialCh .. ")")
-                        else
-                            if dialChPage < #dial.choices.txt and dial.choices.txt[dialChPage][dialCh].isAdvance then
-                                dialChPage = dialChPage + 1
-                                isDialogChSelected = false
-                                dialCh = dialChVis
-                                dialPg = 1
-                                dProgTime = 0
-                                dArrAlp = 0
-                                isDialogProg = true
-                                print("next choice page (page: " ..
-                                    dialPg .. ", choice: " .. dialCh .. ", chPage: " .. dialChPage .. ")")
-                            else
-                                if not dial.choices.txt[dialChPage][dialCh].isAdvance then
-                                    print("stopped dialog choices session")
+                            print("choice selected (ch: " .. dialCh .. ")")
+                        end
+                    else
+                        -- ###--- start of choice answers end & continue function ---###
+                        if dial.choices.txt ~= nil then
+                            if dial.choices.txt[dialChPage][dialCh] ~= nil then
+                                if #dial.choices.txt[dialChPage][dialCh].str > dialPg then
+                                    dialPg = dialPg + 1
+                                    dProgTime = 0
+                                    dArrAlp = 0
+                                    -- reset choice visual on next page
+                                    dialChVis = 1
+                                    isDialogProg = true
+                                    print("next page (page: " .. dialPg .. ", choice: " .. dialCh .. ")")
+                                else
+                                    if dialChPage < #dial.choices.txt and dial.choices.txt[dialChPage][dialCh].isAdvance then
+                                        dialChPage = dialChPage + 1
+                                        isDialogChSelected = false
+                                        dialCh = dialChVis
+                                        dialPg = 1
+                                        dProgTime = 0
+                                        dArrAlp = 0
+                                        isDialogProg = true
+                                        print("next choice page (page: " ..
+                                            dialPg .. ", choice: " .. dialCh .. ", chPage: " .. dialChPage .. ")")
+                                    else
+                                        if not dial.choices.txt[dialChPage][dialCh].isAdvance then
+                                            print("stopped dialog choices session")
+                                        end
+                                        dialChEnd()
+                                    end
                                 end
-                                if dial.choices.arg[dialChPage] ~= nil or dial.choices.arg[dialChPage][dialCh] ~= nil then
-                                    dial.choices.arg[dialChPage][dialCh]()
-                                    print("finshed dialog choices arg")
-                                end
-                                isDialog = false
-                                isDialogChoice = false
-                                isDialogChSelected = false
-                                isDialogTimeout = true
-                                dialPg = 1
-                                dialCh = 1
-                                dialChVis = 1
-                                dialChPage = 1
-                                dialEndFunc()
-                                table_clear(dialObj)
-                                print("end of dialogue" ..
-                                    " (isDialog: " ..
-                                    tostring(isDialog) ..
-                                    ", choice: " .. tostring(dialCh) .. ", choicePg: " .. tostring(dialChPage) .. ")")
                             end
                         end
+                        -- ###--- end of choices answers end & continue function ---###
                     end
                 end
             end
@@ -962,11 +1041,13 @@ function love.update(dt)
         dProgTime = dProgTime + dt
         for _, dial in ipairs(dialObj) do
             if dial.choices ~= nil then
-                if dialPg == #dial.txt[dialChPage] and not isDialogChSelected or
-                    dialPg == #dial.choices.txt[dialChPage][dialCh].str and not isDialogChSelected then
-                    hidArr = true
-                else
-                    hidArr = false
+                if dial.choices.txt ~= nil or dial.choices.txt[dialChPage][dialCh] ~= nil then
+                    if dialPg == #dial.txt[dialChPage] and not isDialogChSelected or
+                        dialPg == #dial.choices.txt[dialChPage][dialCh].str and not isDialogChSelected then
+                        hidArr = true
+                    else
+                        hidArr = false
+                    end
                 end
             end
         end
@@ -1013,21 +1094,21 @@ function love.update(dt)
                         npcPImg = lg.newImage(dial.portr[dial.txt[dialPg].npcFoc][dial.txt[dialPg].npcExp])
                         -- dial txt x offset
                         dTxtOffX = 100
-                        print("rendered portrait dialogue (FPS: " .. lt.getFPS() .. ")")
+                        print("rendered portrait dialogue (FPS: " .. lt.getFPS() .. " offX: " .. dTxtOffX .. ")")
                     else
                         dTxtOffX = 0
-                        print("rendered portrait-less dialogue")
                     end
                 else
-                    npcNameFocus = dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc
-                    if dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc] ~= nil then
+                    if dial.choices.txt[dialChPage][dialCh] ~= nil then
+                        npcNameFocus = dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc
                         if dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc] ~= nil then
-                            npcPImg = lg.newImage(dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc]
+                            npcPImg = lg.newImage(dial.portr
+                                [dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc]
                                 [dial.choices.txt[dialChPage][dialCh].str[dialPg].npcExp])
                             dTxtOffX = 100
+                            print("rendered portrait dialogue (FPS: " .. lt.getFPS() .. " offX: " .. dTxtOffX .. ")")
                         else
                             dTxtOffX = 0
-                            print("rendered portrait-less dialogue in choices")
                         end
                     end
                 end
@@ -1038,20 +1119,35 @@ function love.update(dt)
             -- dial choices y offset
             if dial.choices ~= nil then
                 dFrmOff = - #dial.choices.chTxt[dialChPage] + 2
-
                 -- choices frame alpha
                 if not isDialogChSelected then
-                    if dProgTime >= 0.5 and dialPg == #dial.choices.txt[dialChPage][dialCh].str or dProgTime >= 0.5 and dialPg == #dial.txt[dialChPage] then
-                        if dFrmChAlp < 1 then
-                            dFrmChAlp = dFrmChAlp + dt * 12
+                    if dial.choices.txt[dialChPage][dialCh] ~= nil then
+                        if dProgTime >= 0.5 and dialPg == #dial.choices.txt[dialChPage][dialCh].str or dProgTime >= 0.5 and dialPg == #dial.txt[dialChPage] then
+                            if dFrmChAlp < 1 then
+                                dFrmChAlp = dFrmChAlp + dt * 12
+                            end
+                            if dFrmBGChAlp < 0.95 then
+                                dFrmBGChAlp = dFrmBGChAlp + dt * (12 * 0.95)
+                            end
+                            if dFrmChSel < 0.15 then
+                                dFrmChSel = dFrmChSel + dt * (12 * 0.15)
+                            else
+                                dFrmChSel = 0.15
+                            end
                         end
-                        if dFrmBGChAlp < 0.95 then
-                            dFrmBGChAlp = dFrmBGChAlp + dt * (12 * 0.95)
-                        end
-                        if dFrmChSel < 0.15 then
-                            dFrmChSel = dFrmChSel + dt * (12 * 0.15)
-                        else
-                            dFrmChSel = 0.15
+                    else
+                        if dProgTime >= 0.5 and dialPg == #dial.txt[dialChPage] then
+                            if dFrmChAlp < 1 then
+                                dFrmChAlp = dFrmChAlp + dt * 12
+                            end
+                            if dFrmBGChAlp < 0.95 then
+                                dFrmBGChAlp = dFrmBGChAlp + dt * (12 * 0.95)
+                            end
+                            if dFrmChSel < 0.15 then
+                                dFrmChSel = dFrmChSel + dt * (12 * 0.15)
+                            else
+                                dFrmChSel = 0.15
+                            end
                         end
                     end
                 else
@@ -1214,23 +1310,29 @@ function love.draw()
     lg.setColor(1, 1, 1, 1)
     if isDebug then
         lg.setColor(1, 1, 1, 1)
-
         lg.rectangle("line", plyOArea.x, plyOArea.y, plyOArea.w, plyOArea.h)
         for _, npc in ipairs(objNpc) do
+            local function colL()
+                if npc.colLine ~= nil then
+                    lg.setColor(npc.colLine)
+                else
+                    lg.setColor(1, 1, 1)
+                end
+            end
             if ply.face == "up" then
-                lg.setColor(npc.colLine)
+                colL()
                 lg.rectangle("line", npc.x - 10, npc.y + npc.h, npc.w + 20, npc.h - 10)
             end
             if ply.face == "down" then
-                lg.setColor(npc.colLine)
+                colL()
                 lg.rectangle("line", npc.x - 10, npc.y - 10, npc.w + 20, npc.h - 10)
             end
             if ply.face == "left" then
-                lg.setColor(npc.colLine)
+                colL()
                 lg.rectangle("line", npc.x + 20, npc.y - 10, npc.w - 10, npc.h + 20)
             end
             if ply.face == "right" then
-                lg.setColor(npc.colLine)
+                colL()
                 lg.rectangle("line", npc.x - 10, npc.y - 10, npc.w - 10, npc.h + 20)
             end
         end
@@ -1239,6 +1341,8 @@ function love.draw()
 
     -- game ui
     -- dialog
+
+    -- name frame
     for i, dial in ipairs(dialObj) do
         if dial.name ~= "" and not settings.hideNames then
             lg.setColor(1, 1, 1, dFrmAlp)
@@ -1254,23 +1358,32 @@ function love.draw()
         end
     end
 
+    -- dialogue frame
     lg.setColor(1, 1, 1, dFrmAlp)
     lg.line(0, wHg - 120, wWd, wHg - 120)
     lg.setColor(0, 0, 0, dFrmBGAlp)
     lg.rectangle("fill", 0, wHg - 120, wWd, 120)
+
     lg.setColor(1, 1, 1, 1)
     for _, dial in ipairs(dialObj) do
+        -- portrait
         if dial.portr ~= nil then
             if not isDialogChSelected then
                 if dial.portr[dial.txt[dialPg].npcFoc] ~= nil then
                     lg.draw(npcPImg, 20, wHg - 100, 0, 80 / npcPImg:getWidth(), 80 / npcPImg:getHeight())
                 end
             else
-                if dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc] ~= nil then
-                    lg.draw(npcPImg, 20, wHg - 100, 0, 10, 10)
+                if dial.choices.txt ~= nil then
+                    if dial.choices.txt[dialChPage][dialCh] ~= nil then
+                        if dial.portr[dial.choices.txt[dialChPage][dialCh].str[dialPg].npcFoc] ~= nil then
+                            lg.draw(npcPImg, 20, wHg - 100, 0, 10, 10)
+                        end
+                    end
                 end
             end
         end
+
+        -- dial. text
         if not isDialogChSelected then
             if dial.choices ~= nil then
                 lg.printf(dial.txt[dialChPage][dialPg], fonts.ui, 20 + dTxtOffX, wHg - 100, wWd - 40 - dTxtOffX, "left")
@@ -1279,18 +1392,14 @@ function love.draw()
             end
         else
             -- dialog choices answers
-            if dial.choices.txt[dialChPage][dialCh].str ~= nil or #dial.choices.txt[dialChPage][dialCh].str < dialPg then
-                lg.printf(dial.choices.txt[dialChPage][dialCh].str[dialPg], fonts.ui, 20, wHg - 100, wWd - 40, "left")
-            else
-                lg.setColor(.1, .1, .1, 0.75)
-                lg.rectangle("fill", 0, 0, wWd, wHg)
-                lg.setColor(1, 1, 1, 1)
-                lg.printf(
-                    "Empty string! Game will now crash.\n(Press " ..
-                    keys.confirm:gsub("^%l", string.upper) .. " to continue)", fonts.ui, 0,
-                    (wHg - fonts.ui:getHeight())
-                    /
-                    2, wWd, "center")
+            if dial.choices.txt ~= nil then
+                if dial.choices.txt[dialChPage][dialCh] ~= nil then
+                    if dial.choices.txt[dialChPage][dialCh].str ~= nil or #dial.choices.txt[dialChPage][dialCh].str < dialPg then
+                        lg.printf(dial.choices.txt[dialChPage][dialCh].str[dialPg], fonts.ui, 20 + dTxtOffX, wHg - 100,
+                            wWd - 40,
+                            "left")
+                    end
+                end
             end
         end
         if dial.choices ~= nil then
@@ -1381,7 +1490,10 @@ function love.draw()
             dialCh .. " " .. dialChVis ..
             " chPg:" ..
             dialChPage ..
-            "\n choice:" .. tostring(isDialogChoice) .. " choiceSel:" .. tostring(isDialogChSelected) .. "\n" .. sc,
+            "\ndialog: " ..
+            tostring(isDialog) ..
+            " choice:" .. tostring(isDialogChoice) .. " choiceSel:" .. tostring(isDialogChSelected) .. "\n" .. sc,
+            fonts.othr,
             0,
             10,
             wWd - 10, "right")
@@ -1389,8 +1501,12 @@ function love.draw()
         lg.printf(
             lt.getFPS() ..
             " FPS\n" ..
-            string.format("%.2f", lg.getStats().texturememory / 1024) ..
+            string.format("%.2f", lg.getStats().texturememory / 1024 / 1024) ..
             " MB" .. "/" .. lg.getStats().images .. " imgs" .. "/" .. lg.getStats().drawcalls .. " drw\n" ..
-            objCount .. " objs\n" .. plyAimgCount .. " objs\n" .. npcCount .. " npcs", 10, 10, wWd, "left")
+            objCount .. " objs\n" .. plyAimgCount .. " objs\n" .. npcCount .. " npcs", fonts.othr, 10, 10, wWd, "left")
+        if not isDialog then
+            lg.setColor(1, 1, 1, 0.25)
+            lg.printf("VERY EXPERIMENTAL\nmight improve this later..", fonts.othr, 0, wHg - 40, wWd - 20, "right")
+        end
     end
 end
