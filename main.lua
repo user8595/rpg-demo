@@ -440,7 +440,7 @@ local function dialEndFunc()
                             "Now that you're somehow still not bored, i wanna ask another.."
                         },
                         {
-                            -- use functiions to return a table
+                            -- use functions to return a table (untested)
                             { 1, 1, 1 },
                             "What would you do to make this less boring?"
                         }
@@ -449,6 +449,7 @@ local function dialEndFunc()
                 function()
                     -- note: unused for npcs with choices
                     -- since this is a function, it could be programmable to work from what the player's chose
+                    -- unused if choices dialogue though
                     ply.dial.e_8_b1 = true
                 end,
                 -- if dialPg == #dialObj.txt after dialog prog then trigger choice event, after player selects, trigger isDialChSelected, if end of table set the variable before to false and dialPg to 1
@@ -731,6 +732,7 @@ function love.keypressed(k)
             for _, dial in ipairs(dialObj) do
                 if not isDialogChoice and dial.choices ~= nil then
                     if dialPg >= #dial.txt then
+                        -- this is a flaw
                         isDialogChoice = true
                         print("triggered choices")
                     end
@@ -1010,7 +1012,11 @@ function love.update(dt)
                 if not isDialogChSelected then
                     npcNameFocus = dial.txt[dialPg].npcFoc
                     if dial.portr[dial.txt[dialPg].npcFoc] ~= nil then
-                        npcPImg = lg.newImage(dial.portr[dial.txt[dialPg].npcFoc][dial.txt[dialPg].npcExp])
+                        if dial.portr[dial.txt[dialPg].npcFoc][dial.txt[dialPg].npcExp] ~= nil then
+                            npcPImg = lg.newImage(dial.portr[dial.txt[dialPg].npcFoc][dial.txt[dialPg].npcExp])
+                        else
+                            npcPImg = lg.newImage("/assets/img/no_tex.png")
+                        end
                         -- dial txt x offset
                         dTxtOffX = 100
                         print("rendered portrait dialogue (FPS: " .. lt.getFPS() .. ")")
@@ -1300,6 +1306,7 @@ function love.draw()
                 lg.setColor(0, 0, 0, dFrmBGChAlp)
                 lg.rectangle("fill", wWd - 20 - 240, wHg - 181 - 60 * (-i - (dFrmOff + 1)) - 159, 240, 60)
                 lg.setColor(1, 1, 1, dFrmChAlp)
+                --TODO: Move text upwards depending on line count
                 lg.printf(dial.choices.chTxt[dialChPage][i], fonts.dialChoice, wWd - 20 - 240,
                     wHg - 162 - 60 * (-i - (dFrmOff + 1)) - 155, 240, "center")
             end
